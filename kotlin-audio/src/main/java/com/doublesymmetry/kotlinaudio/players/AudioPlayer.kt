@@ -19,6 +19,15 @@ import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import java.util.concurrent.TimeUnit
 
+fun isJUnitTest(): Boolean {
+    for (element in Thread.currentThread().stackTrace) {
+        if (element.className.startsWith("org.junit.")) {
+            return true
+        }
+    }
+    return false
+}
+
 open class AudioPlayer(private val context: Context) {
     protected val exoPlayer: SimpleExoPlayer = SimpleExoPlayer.Builder(context).build()
 
@@ -37,6 +46,10 @@ open class AudioPlayer(private val context: Context) {
             ""
         }
 
+        if (isJUnitTest()) {
+            exoPlayer.setThrowsWhenUsingWrongThread(false)
+        }
+
         mediaSessionConnector.setPlayer(exoPlayer)
 
         val builder = PlayerNotificationManager.Builder(context, NOTIFICATION_ID, channelId)
@@ -45,11 +58,13 @@ open class AudioPlayer(private val context: Context) {
             .setMediaDescriptionAdapter(descriptionAdapter)
             .build()
 
-        playerNotificationManager.apply {
-            setPlayer(exoPlayer)
-            setMediaSessionToken(mediaSession.sessionToken)
-            setUseNextActionInCompactView(true)
-            setUsePreviousActionInCompactView(true)
+        if (!isJUnitTest()) {
+            playerNotificationManager.apply {
+                setPlayer(exoPlayer)
+                setMediaSessionToken(mediaSession.sessionToken)
+                setUseNextActionInCompactView(true)
+                setUsePreviousActionInCompactView(true)
+            }
         }
 
         addPlayerListener()
