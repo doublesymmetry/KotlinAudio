@@ -84,5 +84,45 @@ class QueuedAudioPlayerTest {
         audioPlayer.previous()
         assertEquals(audioPlayer.nextItems.size, 1)
     }
+
+    @Test
+    fun nextItems_when_adding_two_items_then_removing_one_item_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.remove(1)
+        assertEquals(audioPlayer.nextItems.size, 0)
+    }
+
+    @Test
+    fun nextItems_when_adding_two_items_then_jumping_to_last_item_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.jumpToItem(1)
+        assertEquals(audioPlayer.nextItems.size, 0)
+    }
+
+    @Test
+    fun nextItems_when_adding_two_items_then_removing_upcoming_items_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.removeUpcomingItems()
+        assertEquals(audioPlayer.nextItems.size, 0)
+    }
+
+    @Test
+    fun nextItems_when_adding_two_items_then_stopping_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.stop()
+        assertEquals(audioPlayer.nextItems.size, 0)
+    }
     //endregion
 }
