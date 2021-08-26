@@ -98,9 +98,7 @@ open class QueuedAudioPlayer(context: Context) : AudioPlayer(context) {
      * Remove an item from the queue.
      * @param item The [AudioItem] to remove, if it exists in the queue.
      */
-    fun remove(item: AudioItem) {
-        val mediaItem = MediaItem.fromUri(item.audioUrl)
-        val index = queue.indexOf(mediaItem)
+    fun remove(index: Int) {
         queue.removeAt(index)
         exoPlayer.removeMediaItem(index)
     }
