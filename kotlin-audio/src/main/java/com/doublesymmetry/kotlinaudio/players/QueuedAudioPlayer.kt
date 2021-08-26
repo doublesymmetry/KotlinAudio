@@ -96,7 +96,7 @@ open class QueuedAudioPlayer(context: Context) : AudioPlayer(context) {
 
     /**
      * Remove an item from the queue.
-     * @param item The [AudioItem] to remove, if it exists in the queue.
+     * @param index The index of the item to remove.
      */
     fun remove(index: Int) {
         queue.removeAt(index)
