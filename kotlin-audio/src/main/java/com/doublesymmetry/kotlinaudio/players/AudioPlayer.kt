@@ -12,21 +12,13 @@ import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.models.AudioItem
 import com.doublesymmetry.kotlinaudio.models.AudioItemTransitionReason
 import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
+import com.doublesymmetry.kotlinaudio.utils.isJUnitTest
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player.*
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import java.util.concurrent.TimeUnit
-
-fun isJUnitTest(): Boolean {
-    for (element in Thread.currentThread().stackTrace) {
-        if (element.className.startsWith("org.junit.")) {
-            return true
-        }
-    }
-    return false
-}
 
 open class AudioPlayer(private val context: Context) {
     protected val exoPlayer: SimpleExoPlayer = SimpleExoPlayer.Builder(context).build()
