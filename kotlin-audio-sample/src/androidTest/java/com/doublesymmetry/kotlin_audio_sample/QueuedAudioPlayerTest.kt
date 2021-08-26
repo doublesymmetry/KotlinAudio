@@ -125,4 +125,53 @@ class QueuedAudioPlayerTest {
         assertEquals(audioPlayer.nextItems.size, 0)
     }
     //endregion
+
+    //region previousItems
+    @Test
+    fun previousItems_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        assertEquals(audioPlayer.nextItems.size, 0)
+    }
+
+    @Test
+    fun previousItems_when_adding_two_items_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        assertEquals(audioPlayer.previousItems.size, 0)
+    }
+
+    @Test
+    fun previousItems_when_adding_two_items_then_calling_next_should_contain_one_items() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.next()
+        assertEquals(audioPlayer.previousItems.size, 1)
+    }
+
+    @Test
+    fun previousItems_when_adding_two_items_then_removing_all_previous_items_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.removePreviousItems()
+        assertEquals(audioPlayer.previousItems.size, 0)
+    }
+
+    @Test
+    fun previousItems_when_adding_two_items_then_stopping_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.stop()
+        assertEquals(audioPlayer.previousItems.size, 0)
+    }
+    //endregion
 }
