@@ -7,4 +7,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Run Tests
-        run: ./gradlew :kotlin-audio-sample:connectedAndroidTest
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          script: ./gradlew connectedCheck
