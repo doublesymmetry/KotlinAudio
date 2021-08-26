@@ -45,4 +45,44 @@ class QueuedAudioPlayerTest {
         assertNotNull(audioPlayer.currentItem)
     }
     //endregion
+
+    //region nextItems
+    @Test
+    fun nextItems_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        assertEquals(audioPlayer.nextItems.size, 0)
+    }
+
+    @Test
+    fun nextItems_when_adding_two_items_should_contain_one_item() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        assertEquals(audioPlayer.nextItems.size, 1)
+    }
+
+    @Test
+    fun nextItems_when_adding_two_items_then_calling_next_should_contain_zero_items() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.next()
+        assertEquals(audioPlayer.nextItems.size, 0)
+    }
+
+    @Test
+    fun nextItems_when_adding_two_items_then_calling_next_then_calling_previous_should_contain_one_item() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
+        audioPlayer.next()
+        audioPlayer.previous()
+        assertEquals(audioPlayer.nextItems.size, 1)
+    }
+    //endregion
 }
