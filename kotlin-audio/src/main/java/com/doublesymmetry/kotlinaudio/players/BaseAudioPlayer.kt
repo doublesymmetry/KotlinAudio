@@ -74,9 +74,6 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             exoPlayer.setPlaybackSpeed(value)
         }
 
-    /**
-     * The volume multiplier is added to the
-     */
     private var volumeMultiplier = 1f
         private set(value) {
             field = value
