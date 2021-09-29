@@ -73,11 +73,9 @@ class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null) : 
     /**
      * Add a single item to the queue.
      * @param item The [AudioItem] to add.
-     * @param playWhenReady If this is `true` it will automatically start playback. Default is `true`.
+     * @param playWhenReady If the AudioPlayer has no item loaded, it will load the `item`. If this is `true` it will automatically start playback. Default is `true`.
      */
     fun add(item: AudioItem, playWhenReady: Boolean = true) {
-        exoPlayer.playWhenReady = playWhenReady
-
         val mediaSource = getMediaSourceFromAudioItem(item)
 
         queue.add(mediaSource)
@@ -90,7 +88,7 @@ class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null) : 
     /**
      * Add multiple items to the queue.
      * @param items The [AudioItem]s to add.
-     * @param playWhenReady If this is `true` it will automatically start playback. Default is `true`.
+     * @param playWhenReady  If the AudioPlayer has no item loaded, it will load the first item in the list. If this is `true` it will automatically start playback. Default is `true`.
      */
     fun add(items: List<AudioItem>, playWhenReady: Boolean = true) {
         val mediaSources = items.map { getMediaSourceFromAudioItem(it) }
@@ -99,6 +97,19 @@ class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null) : 
 
         exoPlayer.prepare()
         exoPlayer.playWhenReady = playWhenReady
+    }
+
+    /**
+     * Add multiple items to the queue.
+     * @param items The [AudioItem]s to add.
+     * @param atIndex  Index to insert items at, if no items loaded this will not automatically start playback.
+     */
+    fun add(items: List<AudioItem>, atIndex: Int) {
+        val mediaSources = items.map { getMediaSourceFromAudioItem(it) }
+        queue.addAll(atIndex, mediaSources)
+        exoPlayer.addMediaSources(atIndex, mediaSources)
+
+        exoPlayer.prepare()
     }
 
     /**
