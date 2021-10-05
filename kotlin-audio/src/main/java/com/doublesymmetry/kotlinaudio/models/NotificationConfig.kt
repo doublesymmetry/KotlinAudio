@@ -20,21 +20,17 @@ sealed class NotificationButton(@DrawableRes val icon: Int?) {
     class NEXT(@DrawableRes icon: Int? = null, val isCompact: Boolean = false): NotificationButton(icon)
     class PREVIOUS(@DrawableRes icon: Int? = null, val isCompact: Boolean = false): NotificationButton(icon)
 
-    enum class Action {
-        PLAY, PAUSE, STOP, FORWARD, REWIND, NEXT, PREVIOUS
-    }
-
     companion object {
-        internal fun valueOf(value: String): Action {
+        internal fun valueOf(value: String): NotificationButton {
             return when(value) {
-                ACTION_PLAY -> Action.PLAY
-                ACTION_PAUSE -> Action.PAUSE
-                ACTION_STOP -> Action.STOP
-                ACTION_FAST_FORWARD -> Action.FORWARD
-                ACTION_REWIND -> Action.REWIND
-                ACTION_NEXT -> Action.NEXT
-                ACTION_PREVIOUS -> Action.PREVIOUS
-                else -> error("No such action exists")
+                ACTION_PLAY -> PLAY()
+                ACTION_PAUSE -> PAUSE()
+                ACTION_STOP -> STOP()
+                ACTION_FAST_FORWARD -> FORWARD()
+                ACTION_REWIND -> BACKWARD()
+                ACTION_NEXT -> NEXT()
+                ACTION_PREVIOUS -> PREVIOUS()
+                else -> error("No such button exists")
             }
         }
     }

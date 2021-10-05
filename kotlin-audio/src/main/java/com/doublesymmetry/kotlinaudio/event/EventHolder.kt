@@ -13,8 +13,8 @@ class EventHolder internal constructor(private val notificationEventHolder: Noti
     val onAudioFocusChanged
         get() = playerEventHolder.onAudioFocusChanged
 
-    val onNotificationAction
-        get() = notificationEventHolder.onNotificationAction
+    val onNotificationButtonTapped
+        get() = notificationEventHolder.onNotificationButtonTapped
 
     val notificationStateChange
         get() = notificationEventHolder.notificationStateChange

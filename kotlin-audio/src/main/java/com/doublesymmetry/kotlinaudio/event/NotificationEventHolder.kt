@@ -11,15 +11,15 @@ import kotlinx.coroutines.launch
 class NotificationEventHolder {
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
-    private var _onNotificationAction = MutableSharedFlow<NotificationButton.Action>()
-    var onNotificationAction = _onNotificationAction.asSharedFlow()
+    private var _onNotificationButtonTapped = MutableSharedFlow<NotificationButton>()
+    var onNotificationButtonTapped = _onNotificationButtonTapped.asSharedFlow()
 
     private var _notificationStateChange = MutableSharedFlow<NotificationState>(1)
     var notificationStateChange = _notificationStateChange.asSharedFlow()
 
-    internal fun updateOnNotificationAction(type: NotificationButton.Action) {
+    internal fun updateOnNotificationButtonTapped(button: NotificationButton) {
         coroutineScope.launch {
-            _onNotificationAction.emit(type)
+            _onNotificationButtonTapped.emit(button)
         }
     }
 

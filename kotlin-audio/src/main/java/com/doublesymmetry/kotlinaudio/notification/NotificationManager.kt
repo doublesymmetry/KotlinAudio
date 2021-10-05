@@ -138,7 +138,7 @@ class NotificationManager internal constructor(private val context: Context, pri
 
     override fun onAction(player: Player, action: String, intent: Intent) {
         scope.launch {
-            event.updateOnNotificationAction(NotificationButton.valueOf(action))
+            event.updateOnNotificationButtonTapped(NotificationButton.valueOf(action))
         }
     }
 
