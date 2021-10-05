@@ -32,8 +32,6 @@ import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.upstream.*
 import com.google.android.exoplayer2.util.Util
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
@@ -42,8 +40,6 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     val notificationManager: NotificationManager
 
     open val playerOptions: PlayerOptions = PlayerOptionsImpl()
-
-    protected val scope = CoroutineScope(Dispatchers.Main)
 
     val duration: Long
         get() {

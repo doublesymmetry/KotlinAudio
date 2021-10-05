@@ -1,9 +1,15 @@
 package com.doublesymmetry.kotlinaudio.models
 
+import android.app.PendingIntent
 import androidx.annotation.DrawableRes
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.*
 
-data class NotificationConfig(val buttons: List<NotificationButton>)
+/**
+ * Used to configure the player notification.
+ * @param buttons The buttons that would appear on the notification.
+ * @param pendingIntent The [PendingIntent] that would be called when tapping on the notification itself.
+ */
+data class NotificationConfig(val buttons: List<NotificationButton>, val pendingIntent: PendingIntent? = null)
 
 sealed class NotificationButton(@DrawableRes val icon: Int?) {
     class PLAY(@DrawableRes icon: Int? = null): NotificationButton(icon)
