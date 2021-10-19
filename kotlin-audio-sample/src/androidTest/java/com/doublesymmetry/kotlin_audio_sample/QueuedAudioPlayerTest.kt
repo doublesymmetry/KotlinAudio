@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.doublesymmetry.kotlin_audio_sample.utils.firstItem
 import com.doublesymmetry.kotlin_audio_sample.utils.secondItem
+import com.doublesymmetry.kotlinaudio.models.CacheConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
 
 import org.junit.Test
@@ -13,6 +14,15 @@ import org.junit.Assert.*
 
 @RunWith(AndroidJUnit4::class)
 class QueuedAudioPlayerTest {
+    //region initializer
+    @Test
+    fun initialize_with_cache_options() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext, cacheConfig = CacheConfig(maxCacheSize = 1024 * 50))
+
+        assertNull(audioPlayer.currentItem)
+    }
+    //endregion
     //region currentItem
     @Test
     fun currentItem_should_be_null() {
