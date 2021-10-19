@@ -23,6 +23,7 @@ class QueuedAudioPlayerTest {
         assertNull(audioPlayer.currentItem)
     }
     //endregion
+    
     //region currentItem
     @Test
     fun currentItem_should_be_null() {
