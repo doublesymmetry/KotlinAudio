@@ -133,7 +133,7 @@ class QueuedAudioPlayerTest {
         val audioPlayer = QueuedAudioPlayer(appContext)
 
         audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
-        audioPlayer.destroy()
+        audioPlayer.stop()
         assertEquals(audioPlayer.nextItems.size, 0)
     }
     //endregion
@@ -182,7 +182,7 @@ class QueuedAudioPlayerTest {
         val audioPlayer = QueuedAudioPlayer(appContext)
 
         audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
-        audioPlayer.destroy()
+        audioPlayer.stop()
         assertEquals(audioPlayer.previousItems.size, 0)
     }
     //endregion
