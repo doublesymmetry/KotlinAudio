@@ -40,6 +40,13 @@ import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvicto
 import com.google.android.exoplayer2.database.ExoDatabaseProvider
 
 import com.google.android.exoplayer2.database.DatabaseProvider
+import com.google.android.exoplayer2.metadata.Metadata;
+import com.google.android.exoplayer2.metadata.flac.VorbisComment
+import com.google.android.exoplayer2.metadata.icy.IcyHeaders
+import com.google.android.exoplayer2.metadata.icy.IcyInfo
+import com.google.android.exoplayer2.metadata.id3.TextInformationFrame
+import com.google.android.exoplayer2.metadata.id3.UrlLinkFrame
+import com.google.android.exoplayer2.metadata.mp4.MdtaMetadataEntry
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource
 import java.io.File
 
@@ -348,6 +355,233 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     }
 
     inner class PlayerListener : Listener {
+        override fun onMetadata(metadata: Metadata) {
+            /**
+             * ID3 Metadata (MP3)
+             *
+             * https://en.wikipedia.org/wiki/ID3
+             */
+            fun id3(metadata: Metadata): Boolean {
+                var handled = false;
+                var title: String? = null
+                var url: String? = null
+                var artist: String? = null
+                var album: String? = null
+                var date: String? = null
+                var genre: String? = null
+                for (i in 0 until metadata.length()) {
+                    when (val entry = metadata[i]) {
+                        is TextInformationFrame -> {
+                            when (entry.id.uppercase()) {
+                                "TIT2",
+                                "TT2" -> {
+                                    handled = true;
+                                    title = entry.value
+                                }
+                                "TALB",
+                                "TOAL",
+                                "TAL" -> {
+                                    handled = true;
+                                    album = entry.value
+                                }
+                                "TOPE",
+                                "TPE1",
+                                "TP1" -> {
+                                    handled = true;
+                                    artist = entry.value
+                                }
+                                "TDRC",
+                                "TOR" -> {
+                                    handled = true;
+                                    date = entry.value
+                                }
+                                "TCON",
+                                "TCO" -> {
+                                    handled = true;
+                                    genre = entry.value
+                                }
+
+                            }
+                        }
+                        is UrlLinkFrame -> {
+                            when (entry.id.uppercase()) {
+                                "WOAS",
+                                "WOAF",
+                                "WOAR",
+                                "WAR" -> {
+                                    handled = true;
+                                    url = entry.url;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (handled) {
+                    val playbackMetadata = PlaybackMetadata("id3");
+                    playbackMetadata.artist = artist;
+                    playbackMetadata.album = album;
+                    playbackMetadata.date = date;
+                    playbackMetadata.genre = genre;
+                    playbackMetadata.title = title;
+                    playbackMetadata.url = url;
+                    playerEventHolder.updateOnPlaybackMetadata(playbackMetadata);
+                }
+                return handled;
+            }
+
+            /**
+             * Shoutcast / Icecast metadata (ICY protocol)
+             *
+             * https://cast.readme.io/docs/icy
+             */
+            fun icy(metadata: Metadata): Boolean {
+                var handled = false;
+                for (i in 0 until metadata.length()) {
+                    when (val entry = metadata[i]) {
+                        is IcyHeaders -> {
+                            handled = true;
+                            val playbackMetadata = PlaybackMetadata("icy-headers");
+                            playbackMetadata.title = entry.name;
+                            playbackMetadata.url = entry.url;
+                            playbackMetadata.genre = entry.genre;
+                            playerEventHolder.updateOnPlaybackMetadata(playbackMetadata);
+                        }
+                        is IcyInfo -> {
+                            handled = true;
+                            var artist: String?
+                            var title: String?
+                            val index =
+                                if (entry.title == null) -1 else entry.title!!.indexOf(" - ")
+                            if (index != -1) {
+                                artist = entry.title!!.substring(0, index)
+                                title = entry.title!!.substring(index + 3)
+                            } else {
+                                artist = null
+                                title = entry.title
+                            }
+                            val playbackMetadata = PlaybackMetadata("icy");
+                            playbackMetadata.title = title;
+                            playbackMetadata.url = entry.url;
+                            playbackMetadata.artist = artist;
+                            playerEventHolder.updateOnPlaybackMetadata(playbackMetadata);
+                        }
+                    }
+                }
+                return handled;
+            }
+
+            /**
+             * Vorbis Comments (Vorbis, FLAC, Opus, Speex, Theora)
+             *
+             * https://xiph.org/vorbis/doc/v-comment.html
+             */
+            fun vorbisComment(metadata: Metadata): Boolean {
+                var handled = false;
+                var title: String? = null
+                var url: String? = null
+                var artist: String? = null
+                var album: String? = null
+                var date: String? = null
+                var genre: String? = null
+                for (i in 0 until metadata.length()) {
+                    val entry = metadata[i]
+                    if (entry is VorbisComment) {
+                        when (entry.key) {
+                            "TITLE" -> {
+                                handled = true;
+                                title = entry.value;
+                            }
+                            "ARTIST" -> {
+                                handled = true;
+                                artist = entry.value;
+                            }
+                            "ALBUM" -> {
+                                handled = true;
+                                album = entry.value;
+                            }
+                            "DATE" -> {
+                                handled = true;
+                                date = entry.value
+                            }
+                            "GENRE" -> {
+                                handled = true;
+                                genre = entry.value
+                            }
+                            "URL" -> {
+                                handled = true;
+                                url = entry.value
+                            }
+                        }
+                    }
+                }
+                if (handled) {
+                    val playbackMetadata = PlaybackMetadata("vorbis-comment");
+                    playbackMetadata.artist = artist;
+                    playbackMetadata.album = album;
+                    playbackMetadata.date = date;
+                    playbackMetadata.genre = genre;
+                    playbackMetadata.title = title;
+                    playbackMetadata.url = url;
+                    playerEventHolder.updateOnPlaybackMetadata(playbackMetadata);
+                }
+                return handled;
+            }
+
+            /**
+             * QuickTime MDTA metadata (mov, qt)
+             *
+             * https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html
+             */
+            fun quicktime(metadata: Metadata): Boolean {
+                var handled = false;
+                var title: String? = null
+                var artist: String? = null
+                var album: String? = null
+                var date: String? = null
+                var genre: String? = null
+                for (i in 0 until metadata.length()) {
+                    val entry = metadata[i];
+                    if (entry is MdtaMetadataEntry) {
+                        when (entry.key) {
+                            "com.apple.quicktime.title" -> {
+                                handled = true;
+                                title = entry.value.toString();
+                            }
+                            "com.apple.quicktime.artist" -> {
+                                handled = true;
+                                artist = entry.value.toString();
+                            }
+                            "com.apple.quicktime.album" -> {
+                                handled = true;
+                                album = entry.value.toString();
+                            }
+                            "com.apple.quicktime.creationdate" -> {
+                                handled = true;
+                                date = entry.value.toString();
+                            }
+                            "com.apple.quicktime.genre" -> {
+                                handled = true;
+                                genre = entry.value.toString();
+                            }
+                        }
+                    }
+                }
+
+                if (handled) {
+                    val playbackMetadata = PlaybackMetadata("quicktime");
+                    playbackMetadata.artist = artist;
+                    playbackMetadata.album = album;
+                    playbackMetadata.date = date;
+                    playbackMetadata.genre = genre;
+                    playbackMetadata.title = title;
+                    playerEventHolder.updateOnPlaybackMetadata(playbackMetadata);
+                }
+                return handled;
+            }
+
+            id3(metadata) || icy(metadata) || vorbisComment(metadata) || quicktime(metadata);
+        }
+
         override fun onPlaybackStateChanged(playbackState: Int) {
             when (playbackState) {
                 Player.STATE_BUFFERING -> playerEventHolder.updateAudioPlayerState(if (exoPlayer.playWhenReady) AudioPlayerState.BUFFERING else AudioPlayerState.LOADING)
