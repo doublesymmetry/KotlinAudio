@@ -1,17 +1,8 @@
 package com.doublesymmetry.kotlinaudio.players
 
 import android.content.Context
-import android.media.AudioManager
-import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
 import androidx.annotation.CallSuper
-import androidx.core.content.ContextCompat
-import androidx.media.AudioAttributesCompat
-import androidx.media.AudioAttributesCompat.CONTENT_TYPE_MUSIC
-import androidx.media.AudioAttributesCompat.USAGE_MEDIA
-import androidx.media.AudioFocusRequestCompat
-import androidx.media.AudioManagerCompat
-import androidx.media.AudioManagerCompat.AUDIOFOCUS_GAIN
 import com.doublesymmetry.kotlinaudio.event.EventHolder
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
@@ -22,6 +13,7 @@ import com.doublesymmetry.kotlinaudio.utils.isUriLocal
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.DefaultLoadControl.*
 import com.google.android.exoplayer2.Player.Listener
+import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
@@ -32,7 +24,6 @@ import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.upstream.*
 import com.google.android.exoplayer2.util.Util
-import timber.log.Timber
 import java.util.concurrent.TimeUnit
 import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor
@@ -43,7 +34,7 @@ import com.google.android.exoplayer2.upstream.cache.CacheDataSource
 import java.io.File
 
 
-abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener {
+abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) {
     protected val exoPlayer: SimpleExoPlayer
     private var cache: SimpleCache? = null
 
@@ -100,10 +91,6 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     val event = EventHolder(notificationEventHolder, playerEventHolder)
 
-    private var focus: AudioFocusRequestCompat? = null
-    private var hasAudioFocus = false
-    private var wasDucking = false
-
     init {
         if (cacheConfig != null) {
             val cacheDir = File(context.cacheDir, "TrackPlayer")
@@ -114,6 +101,14 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         exoPlayer = SimpleExoPlayer.Builder(context).apply {
             if (bufferConfig != null) setLoadControl(setupBuffer(bufferConfig))
         }.build()
+
+        // Have ExoPlayer manage audio focus for us
+        // see https://medium.com/google-exoplayer/easy-audio-focus-with-exoplayer-a2dcbbe4640e
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.CONTENT_TYPE_MUSIC)
+            .build();
+        exoPlayer.setAudioAttributes(audioAttributes,true);
 
         notificationManager = NotificationManager(context, exoPlayer, notificationEventHolder)
 
@@ -182,7 +177,6 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
      */
     @CallSuper
     open fun destroy() {
-        abandonAudioFocus()
         exoPlayer.release()
         notificationManager.destroy()
         cache?.release()
@@ -275,73 +269,6 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         }
     }
 
-    private fun requestAudioFocus() {
-        if (hasAudioFocus) return
-        Timber.d("Requesting audio focus...")
-
-        val manager = ContextCompat.getSystemService(context, AudioManager::class.java)
-
-        focus = AudioFocusRequestCompat.Builder(AUDIOFOCUS_GAIN)
-            .setOnAudioFocusChangeListener(this)
-            .setAudioAttributes(AudioAttributesCompat.Builder()
-                .setUsage(USAGE_MEDIA)
-                .setContentType(CONTENT_TYPE_MUSIC)
-                .build())
-            .setWillPauseWhenDucked(playerOptions.alwaysPauseOnInterruption)
-            .build()
-
-        val result: Int = if (manager != null && focus != null) {
-            AudioManagerCompat.requestAudioFocus(manager, focus!!)
-        } else {
-            AudioManager.AUDIOFOCUS_REQUEST_FAILED
-        }
-
-        hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
-    }
-
-    private fun abandonAudioFocus() {
-        if (!hasAudioFocus) return
-        Timber.d("Abandoning audio focus...")
-
-        val manager = ContextCompat.getSystemService(context, AudioManager::class.java)
-
-        val result: Int = if (manager != null && focus != null) {
-            AudioManagerCompat.abandonAudioFocusRequest(manager, focus!!)
-        } else {
-            AudioManager.AUDIOFOCUS_REQUEST_FAILED
-        }
-
-        hasAudioFocus = (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
-    }
-
-    override fun onAudioFocusChange(focusChange: Int) {
-        Timber.d("Audio focus changed")
-
-        var isPermanent = false
-        var isPaused = false
-        var isDucking = false
-
-        when (focusChange) {
-            AUDIOFOCUS_LOSS -> {
-                isPermanent = true
-                abandonAudioFocus()
-                isPaused = true
-            }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> isPaused = true
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> if (playerOptions.alwaysPauseOnInterruption) isPaused = true else isDucking = true
-        }
-
-        if (isDucking) {
-            volumeMultiplier = 0.5f
-            wasDucking = true
-        } else if (wasDucking) {
-            volumeMultiplier = 1f
-            wasDucking = false
-        }
-
-        playerEventHolder.updateOnAudioFocusChanged(isPaused, isPermanent)
-    }
-
     companion object {
         const val APPLICATION_NAME = "react-native-track-player"
     }
@@ -377,10 +304,8 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) {
-                requestAudioFocus()
                 playerEventHolder.updateAudioPlayerState(AudioPlayerState.PLAYING)
             } else {
-                abandonAudioFocus()
                 playerEventHolder.updateAudioPlayerState(AudioPlayerState.PAUSED)
             }
         }

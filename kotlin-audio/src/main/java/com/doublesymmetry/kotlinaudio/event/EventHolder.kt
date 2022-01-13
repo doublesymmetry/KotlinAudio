@@ -10,9 +10,6 @@ class EventHolder internal constructor(private val notificationEventHolder: Noti
     val audioItemTransition
         get() = playerEventHolder.audioItemTransition
 
-    val onAudioFocusChanged
-        get() = playerEventHolder.onAudioFocusChanged
-
     val onPlaybackMetadata
         get() = playerEventHolder.onPlaybackMetadata
 
