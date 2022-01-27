@@ -75,6 +75,12 @@ class NotificationManager internal constructor(private val context: Context, pri
             internalManager?.useStopAction = value
         }
 
+    var showStopButtonCompact: Boolean
+        get() = internalManager?.useStopActionInCompactView ?: false
+        set(value) {
+            internalManager?.useStopActionInCompactView = value
+        }
+
     var showForwardButton: Boolean
         get() = internalManager?.useFastForwardAction ?: false
         set(value) {
