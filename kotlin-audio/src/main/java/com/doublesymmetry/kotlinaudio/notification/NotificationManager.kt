@@ -75,12 +75,6 @@ class NotificationManager internal constructor(private val context: Context, pri
             internalManager?.useStopAction = value
         }
 
-    var showStopButtonCompact: Boolean
-        get() = internalManager?.useStopActionInCompactView ?: false
-        set(value) {
-            internalManager?.useStopActionInCompactView = value
-        }
-
     var showForwardButton: Boolean
         get() = internalManager?.useFastForwardAction ?: false
         set(value) {
@@ -221,10 +215,7 @@ class NotificationManager internal constructor(private val context: Context, pri
                 config.buttons.forEach { button ->
                     when (button) {
                         is NotificationButton.PLAY, is NotificationButton.PAUSE -> showPlayPauseButton = true
-                        is NotificationButton.STOP -> {
-                            showStopButton = true
-                            showStopButtonCompact = button.isCompact
-                        }
+                        is NotificationButton.STOP -> showStopButton = true
                         is NotificationButton.FORWARD -> {
                             showForwardButton = true
                             showForwardButtonCompact = button.isCompact
