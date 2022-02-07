@@ -11,8 +11,11 @@ import com.doublesymmetry.kotlin_audio_sample.databinding.FragmentFirstBinding
 import com.doublesymmetry.kotlin_audio_sample.utils.firstItem
 import com.doublesymmetry.kotlin_audio_sample.utils.secondItem
 import com.doublesymmetry.kotlinaudio.models.AudioPlayerState.PLAYING
+import com.doublesymmetry.kotlinaudio.models.NotificationButton
+import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
 import com.orhanobut.logger.Logger
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
@@ -22,6 +25,8 @@ import kotlinx.coroutines.launch
 class FirstFragment : Fragment() {
     private var _binding: FragmentFirstBinding? = null
     private val binding get() = _binding!!
+
+    private val serviceScope = MainScope()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -81,6 +86,20 @@ class FirstFragment : Fragment() {
 
         binding.buttonPause.setOnClickListener {
             player.pause()
+        }
+
+        val notificationConfig = NotificationConfig(listOf(NotificationButton.PLAY(), NotificationButton.PAUSE()), null, null, null)
+
+        player.notificationManager.createNotification(notificationConfig)
+
+        serviceScope.launch {
+            player.event.onNotificationButtonTapped.collect {
+                when (it) {
+                    is NotificationButton.PLAY -> player.play()
+                    is NotificationButton.PAUSE -> player.pause()
+                    else -> throw NotImplementedError()
+                }
+            }
         }
     }
 
