@@ -15,4 +15,11 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          script: ./gradlew :kotlin-audio-sample:connectedCheck
+          script: ./gradlew :kotlin-audio:connectedCheck
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        if: always() # run this step even if previous step failed
+        with:
+          name: Tests # Name of the check run which will be created
+          path: '**/build/test-results/**/*.xml' # Path to test results
+          reporter: java-junit # Format of test results
