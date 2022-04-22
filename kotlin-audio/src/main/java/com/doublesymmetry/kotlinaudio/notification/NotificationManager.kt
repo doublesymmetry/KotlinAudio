@@ -11,13 +11,11 @@ import android.support.v4.media.session.MediaSessionCompat
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.models.*
-import com.doublesymmetry.kotlinaudio.utils.isJUnitTest
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val event: NotificationEventHolder) :
@@ -28,7 +26,7 @@ class NotificationManager internal constructor(private val context: Context, pri
     private val mediaSession: MediaSessionCompat = MediaSessionCompat(context, "AudioPlayerSession")
     private val mediaSessionConnector: MediaSessionConnector = MediaSessionConnector(mediaSession)
 
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private val scope = MainScope()
 
     private val buttons = mutableSetOf<NotificationButton?>()
 
@@ -163,9 +161,7 @@ class NotificationManager internal constructor(private val context: Context, pri
 
     init {
         scope.launch {
-            if (!isJUnitTest()) {
-                mediaSessionConnector.setPlayer(exoPlayer)
-            }
+            mediaSessionConnector.setPlayer(exoPlayer)
         }
     }
 
@@ -216,40 +212,39 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }.build()
 
-        if (!isJUnitTest()) {
-            internalManager?.apply {
-                setColor(config.accentColor ?: Color.TRANSPARENT)
-                config.smallIcon?.let { setSmallIcon(it) }
+        internalManager?.apply {
+            setColor(config.accentColor ?: Color.TRANSPARENT)
+            config.smallIcon?.let { setSmallIcon(it) }
 
-                config.buttons.forEach { button ->
-                    when (button) {
-                        is NotificationButton.PLAY, is NotificationButton.PAUSE -> showPlayPauseButton = true
-                        is NotificationButton.STOP -> {
-                            showStopButton = true
-                            showStopButtonCompact = button.isCompact
-                        }
-                        is NotificationButton.FORWARD -> {
-                            showForwardButton = true
-                            showForwardButtonCompact = button.isCompact
-                        }
-                        is NotificationButton.BACKWARD -> {
-                            showBackwardButton = true
-                            showBackwardButtonCompact = button.isCompact
-                        }
-                        is NotificationButton.NEXT -> {
-                            showNextButton = true
-                            showNextButtonCompact = button.isCompact
-                        }
-                        is NotificationButton.PREVIOUS -> {
-                            showPreviousButton = true
-                            showPreviousButtonCompact = button.isCompact
-                        }
+            config.buttons.forEach { button ->
+                when (button) {
+                    is NotificationButton.PLAY, is NotificationButton.PAUSE -> showPlayPauseButton =
+                        true
+                    is NotificationButton.STOP -> {
+                        showStopButton = true
+                        showStopButtonCompact = button.isCompact
+                    }
+                    is NotificationButton.FORWARD -> {
+                        showForwardButton = true
+                        showForwardButtonCompact = button.isCompact
+                    }
+                    is NotificationButton.BACKWARD -> {
+                        showBackwardButton = true
+                        showBackwardButtonCompact = button.isCompact
+                    }
+                    is NotificationButton.NEXT -> {
+                        showNextButton = true
+                        showNextButtonCompact = button.isCompact
+                    }
+                    is NotificationButton.PREVIOUS -> {
+                        showPreviousButton = true
+                        showPreviousButtonCompact = button.isCompact
                     }
                 }
-
-                setMediaSessionToken(mediaSession.sessionToken)
-                setPlayer(exoPlayer)
             }
+
+            setMediaSessionToken(mediaSession.sessionToken)
+            setPlayer(exoPlayer)
         }
     }
 
