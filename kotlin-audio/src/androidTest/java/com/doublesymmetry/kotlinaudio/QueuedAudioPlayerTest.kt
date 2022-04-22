@@ -29,7 +29,7 @@ private object SharedPlayer {
                 val appContext = InstrumentationRegistry.getInstrumentation().targetContext
                 queuedAudioPlayer = QueuedAudioPlayer(
                     appContext,
-                    cacheConfig = CacheConfig(maxCacheSize = 1024 * 50)
+                    cacheConfig = CacheConfig(maxCacheSize = (1024 * 50).toLong())
                 )
             }
             return queuedAudioPlayer!!
