@@ -36,5 +36,5 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: '11'
-      - name: Run Tests
+      - name: Build Sample App
         run: ./gradlew :kotlin-audio-sample:assembleDebug
