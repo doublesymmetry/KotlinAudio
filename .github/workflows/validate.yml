@@ -23,3 +23,15 @@ jobs:
           name: unit-tests-report # Name of the check run which will be created
           path: kotlin-audio/build/outputs/androidTest-results/**/*.xml # Path to test results
           reporter: java-junit # Format of test results
+  build-sample:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'adopt'
+          java-version: '11'
+      - name: Run Tests
+        run: ./gradlew :kotlin-audio-sample:assembleDebug
