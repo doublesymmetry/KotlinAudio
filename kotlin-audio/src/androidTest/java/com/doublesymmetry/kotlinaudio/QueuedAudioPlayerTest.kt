@@ -301,16 +301,18 @@ class QueuedAudioPlayerTest {
             @Test
             fun whenAllowPlaybackToEnd_thenShouldMoveToNextItem() {
                 scope.launch {
-                    InstrumentationRegistry.getInstrumentation().targetContext.assets
-
                     SharedPlayer.instance.add(listOf(testSound, shortTestSound))
                     SharedPlayer.instance.playerOptions.repeatMode =
                         com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
                     SharedPlayer.instance.seek(0.0682.toLong(), TimeUnit.SECONDS)
                     SharedPlayer.instance.play()
 
-                    assertEquals(AudioPlayerState.BUFFERING, SharedPlayer.instance.playerState)
-
+//                    await()
+//                        .pollInSameThread()
+//                        .atMost(5, TimeUnit.SECONDS)
+//                        .untilCallTo { SharedPlayer.instance.playerState }
+//                        .matches { it == AudioPlayerState.PLAYING }
+//
 //                    await()
 //                        .pollInSameThread()
 //                        .untilCallTo { SharedPlayer.instance.nextItems }
@@ -322,11 +324,17 @@ class QueuedAudioPlayerTest {
 
     companion object {
         private val testSound = DefaultAudioItem(
-            "asset:///audio/TestSound.m4a", MediaType.DEFAULT,
+            "rawresource:///${R.raw.short_test_sound}", MediaType.DEFAULT,
+            options = AudioItemOptions(
+                resourceId = R.raw.test_sound,
+            )
         )
 
         private val shortTestSound = DefaultAudioItem(
-            "asset:///audio/ShortTestSound.m4a", MediaType.DEFAULT,
+            "rawresource:///${R.raw.short_test_sound}", MediaType.DEFAULT,
+            options = AudioItemOptions(
+                resourceId = R.raw.short_test_sound,
+            )
         )
     }
 }
