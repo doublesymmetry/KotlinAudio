@@ -53,6 +53,14 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     open val currentItem: AudioItem?
         get() = exoPlayer.currentMediaItem?.localConfiguration?.tag as AudioItem?
 
+    var playerState: AudioPlayerState = AudioPlayerState.IDLE
+        private set(value) {
+            if (value != field) {
+                field = value
+                playerEventHolder.updateAudioPlayerState(value)
+            }
+        }
+
     val duration: Long
         get() {
             return if (exoPlayer.duration == C.TIME_UNSET) 0
@@ -352,17 +360,21 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
-            when (playbackState) {
-                Player.STATE_BUFFERING -> playerEventHolder.updateAudioPlayerState(if (exoPlayer.playWhenReady) AudioPlayerState.BUFFERING else AudioPlayerState.LOADING)
+            playerState = when (playbackState) {
+                Player.STATE_BUFFERING -> if (exoPlayer.playWhenReady) AudioPlayerState.BUFFERING else AudioPlayerState.LOADING
                 Player.STATE_READY -> {
                     requestAudioFocus()
-                    playerEventHolder.updateAudioPlayerState(AudioPlayerState.READY)
+                    AudioPlayerState.READY
                 }
                 Player.STATE_IDLE -> {
                     abandonAudioFocusIfHeld()
-                    playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
+                    AudioPlayerState.IDLE
                 }
-                Player.STATE_ENDED -> playerEventHolder.updateAudioPlayerState(AudioPlayerState.ENDED)
+                Player.STATE_ENDED -> AudioPlayerState.ENDED
+                else -> {
+                    Timber.e("Unknown playback state: $playbackState")
+                    AudioPlayerState.IDLE
+                }
             }
         }
 
@@ -382,10 +394,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             // onIsPlayingChanged with isPlaying = false triggers after player queue ends
             // which sends a pause state after the STATE_ENDED - ignoring this case.
             if (exoPlayer.playbackState == Player.STATE_ENDED && !isPlaying) return
-
-            playerEventHolder.updateAudioPlayerState(
-                if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
-            )
+            playerState = if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
         }
     }
 }

@@ -92,8 +92,8 @@ class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null, ca
         queue.addAll(mediaSources)
         exoPlayer.addMediaSources(mediaSources)
 
-        exoPlayer.prepare()
         exoPlayer.playWhenReady = playWhenReady
+        exoPlayer.prepare()
     }
 
     /**
