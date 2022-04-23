@@ -5,13 +5,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.awaitility.Awaitility.await
 import org.awaitility.kotlin.matches
-import org.awaitility.kotlin.until
 import org.awaitility.kotlin.untilCallTo
 import org.junit.Rule
 import org.junit.jupiter.api.Assertions.*
@@ -61,7 +58,7 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingOneItem_thenReturnNotNull() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
 
                 assertNotNull(SharedPlayer.instance.currentItem)
             }
@@ -70,18 +67,18 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingOneItemAndLoadingAnother_thenShouldHaveReplacedItem() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.load(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.load(shortTestSound, playWhenReady = false)
 
-                assertEquals(secondItem.audioUrl, SharedPlayer.instance.currentItem?.audioUrl)
+                assertEquals(shortTestSound.audioUrl, SharedPlayer.instance.currentItem?.audioUrl)
             }
         }
 
         @Test
         fun whenAddingMultipleItems_thenReturnNotNull() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
 
                 assertNotNull(SharedPlayer.instance.currentItem)
             }
@@ -100,8 +97,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItems_thenShouldContainOneItem() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
 
                 assertEquals(1, SharedPlayer.instance.nextItems.size)
             }
@@ -110,8 +107,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndCallingNext_thenShouldContainZeroItems() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.next()
 
                 assertEquals(0, SharedPlayer.instance.nextItems.size)
@@ -121,8 +118,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndCallingNextAndCallingPrevious_thenShouldContainOneItem() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.next()
                 SharedPlayer.instance.previous()
 
@@ -133,8 +130,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndRemovingOneItem_thenShouldBeEmpty() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.remove(1)
 
                 assertTrue(SharedPlayer.instance.nextItems.isEmpty())
@@ -144,8 +141,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndJumpingToLastItem_thenShouldBeEmpty() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.jumpToItem(1)
 
                 assertTrue(SharedPlayer.instance.nextItems.isEmpty())
@@ -155,8 +152,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndRemovingUpcomingItems_thenShouldBeEmpty() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.removeUpcomingItems()
 
                 assertTrue(SharedPlayer.instance.nextItems.isEmpty())
@@ -166,8 +163,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndStopping_thenShouldBeEmpty() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.stop()
 
                 assertTrue(SharedPlayer.instance.nextItems.isEmpty())
@@ -185,8 +182,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItems_thenShouldBeEmpty() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
 
                 assertEquals(0, SharedPlayer.instance.previousItems.size)
             }
@@ -195,8 +192,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndCallingNext_thenShouldHaveOneItem() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.next()
 
                 assertEquals(1, SharedPlayer.instance.previousItems.size)
@@ -206,8 +203,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndRemovingPreviousItems_thenShouldBeEmpty() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.next()
                 SharedPlayer.instance.removePreviousItems()
 
@@ -218,8 +215,8 @@ class QueuedAudioPlayerTest {
         @Test
         fun whenAddingTwoItemsAndStopping_thenShouldBeEmpty() {
             scope.launch {
-                SharedPlayer.instance.add(firstItem, playWhenReady = false)
-                SharedPlayer.instance.add(secondItem, playWhenReady = false)
+                SharedPlayer.instance.add(testSound, playWhenReady = false)
+                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
                 SharedPlayer.instance.stop()
 
                 assertTrue(SharedPlayer.instance.previousItems.isEmpty())
@@ -232,29 +229,29 @@ class QueuedAudioPlayerTest {
         @Test
         fun givenPlayerIsPlayingAndCallingNext_thenShouldGoToNextAndPlay() {
             scope.launch {
-                SharedPlayer.instance.add(listOf(firstItem, secondItem))
+                SharedPlayer.instance.add(listOf(testSound, shortTestSound))
                 SharedPlayer.instance.next()
 
-                assertEquals(secondItem, SharedPlayer.instance.currentItem)
+                assertEquals(shortTestSound, SharedPlayer.instance.currentItem)
                 assertEquals(0, SharedPlayer.instance.nextItems.size)
                 assertEquals(1, SharedPlayer.instance.currentIndex)
-//                await()
-//                    .pollInSameThread()
-//                    .until { SharedPlayer.instance.event.stateChange.value == AudioPlayerState.PLAYING }
+
+                assertEquals(AudioPlayerState.BUFFERING, SharedPlayer.instance.playerState)
             }
         }
 
         @Test
-        fun givenPlayerIsPausedAndCallingNext_thenShouldGoToNextAndPlay() {
+        fun givenPlayerIsPausedAndCallingNext_thenShouldGoToNextAndNotPlay() {
             scope.launch {
-                SharedPlayer.instance.add(listOf(firstItem, secondItem), playWhenReady = false)
+                SharedPlayer.instance.add(listOf(testSound, shortTestSound), playWhenReady = false)
                 SharedPlayer.instance.pause()
                 SharedPlayer.instance.next()
 
-                assertEquals(secondItem, SharedPlayer.instance.currentItem)
+                assertEquals(shortTestSound, SharedPlayer.instance.currentItem)
                 assertEquals(0, SharedPlayer.instance.nextItems.size)
                 assertEquals(1, SharedPlayer.instance.currentIndex)
-//                await().untilCallTo { SharedPlayer.instance.event.stateChange } matches { it?.value == AudioPlayerState.PLAYING }
+
+                assertEquals(AudioPlayerState.LOADING, SharedPlayer.instance.playerState)
             }
         }
     }
@@ -264,35 +261,35 @@ class QueuedAudioPlayerTest {
         @Test
         fun givenPlayerIsPlayingAndCallingPrevious_thenShouldGoToPreviousAndPlay() {
             scope.launch {
-                SharedPlayer.instance.add(listOf(firstItem, secondItem))
+                SharedPlayer.instance.add(listOf(testSound, shortTestSound))
                 SharedPlayer.instance.next()
+                assertEquals(shortTestSound, SharedPlayer.instance.currentItem)
                 SharedPlayer.instance.previous()
 
-                assertEquals(firstItem, SharedPlayer.instance.currentItem)
+                assertEquals(testSound, SharedPlayer.instance.currentItem)
                 assertEquals(1, SharedPlayer.instance.nextItems.size)
                 assertEquals(0, SharedPlayer.instance.previousItems.size)
                 assertEquals(0, SharedPlayer.instance.currentIndex)
-//                await()
-//                    .pollInSameThread()
-//                    .until { SharedPlayer.instance.event.stateChange.value == AudioPlayerState.PLAYING }
+
+                assertEquals(AudioPlayerState.BUFFERING, SharedPlayer.instance.playerState)
             }
         }
 
         @Test
-        fun givenPlayerIsPausedAndCallingPrevious_thenShouldGoToPreviousAndPlay() {
+        fun givenPlayerIsPausedAndCallingPrevious_thenShouldGoToPreviousAndNotPlay() {
             scope.launch {
-                SharedPlayer.instance.add(listOf(firstItem, secondItem), playWhenReady = false)
+                SharedPlayer.instance.add(listOf(testSound, shortTestSound), playWhenReady = false)
                 SharedPlayer.instance.next()
+                assertEquals(shortTestSound, SharedPlayer.instance.currentItem)
                 SharedPlayer.instance.pause()
                 SharedPlayer.instance.previous()
 
-                assertEquals(firstItem, SharedPlayer.instance.currentItem)
+                assertEquals(testSound, SharedPlayer.instance.currentItem)
                 assertEquals(1, SharedPlayer.instance.nextItems.size)
                 assertEquals(0, SharedPlayer.instance.previousItems.size)
                 assertEquals(0, SharedPlayer.instance.currentIndex)
-//                await()
-//                    .pollInSameThread()
-//                    .until { SharedPlayer.instance.event.stateChange.value == AudioPlayerState.PLAYING }
+
+                assertEquals(AudioPlayerState.LOADING, SharedPlayer.instance.playerState)
             }
         }
     }
@@ -304,36 +301,32 @@ class QueuedAudioPlayerTest {
             @Test
             fun whenAllowPlaybackToEnd_thenShouldMoveToNextItem() {
                 scope.launch {
-                    SharedPlayer.instance.add(listOf(firstItem, secondItem))
+                    InstrumentationRegistry.getInstrumentation().targetContext.assets
+
+                    SharedPlayer.instance.add(listOf(testSound, shortTestSound))
                     SharedPlayer.instance.playerOptions.repeatMode =
                         com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
                     SharedPlayer.instance.seek(0.0682.toLong(), TimeUnit.SECONDS)
                     SharedPlayer.instance.play()
 
+                    assertEquals(AudioPlayerState.BUFFERING, SharedPlayer.instance.playerState)
+
 //                    await()
 //                        .pollInSameThread()
-//                        .until { SharedPlayer.instance.nextItems.isEmpty() }
-//                    await()
-//                        .pollInSameThread()
-//                        .until { SharedPlayer.instance.event.stateChange.value == AudioPlayerState.PLAYING }
+//                        .untilCallTo { SharedPlayer.instance.nextItems }
+//                        .matches { it?.isEmpty() == true }
                 }
             }
         }
     }
 
     companion object {
-        private val firstItem = DefaultAudioItem(
-            "https://www.learningcontainer.com/wp-content/uploads/2020/02/Kalimba.mp3", MediaType.DEFAULT,
-            title = "Dirty Computer",
-            artwork = "https://upload.wikimedia.org/wikipedia/en/0/0b/DirtyComputer.png",
-            artist = "Janelle Monáe"
+        private val testSound = DefaultAudioItem(
+            "asset:///audio/TestSound.m4a", MediaType.DEFAULT,
         )
 
-        private val secondItem = DefaultAudioItem(
-            "https://file-examples-com.github.io/uploads/2017/11/file_example_MP3_1MG.mp3", MediaType.DEFAULT,
-            title = "Melodrama",
-            artwork = "https://images-na.ssl-images-amazon.com/images/I/A18QUHExFgL._SL1500_.jpg",
-            artist = "Lorde"
+        private val shortTestSound = DefaultAudioItem(
+            "asset:///audio/ShortTestSound.m4a", MediaType.DEFAULT,
         )
     }
 }
