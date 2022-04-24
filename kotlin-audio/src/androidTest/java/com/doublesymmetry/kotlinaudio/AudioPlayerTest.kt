@@ -30,7 +30,7 @@ class AudioPlayerTest {
     @Nested
     inner class State {
         @Test
-        fun givenNewPlayer_thenShouldBeIdle(testInfo: TestInfo) = runBlocking(Dispatchers.Main) {
+        fun givenNewPlayer_thenShouldBeIdle() = runBlocking(Dispatchers.Main) {
             assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
         }
 
