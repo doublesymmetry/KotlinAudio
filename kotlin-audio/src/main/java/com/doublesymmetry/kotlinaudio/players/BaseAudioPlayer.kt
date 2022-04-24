@@ -42,7 +42,11 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 
-abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener {
+abstract class BaseAudioPlayer internal constructor(
+    private val context: Context,
+    bufferConfig: BufferConfig? = null,
+    private val cacheConfig: CacheConfig? = null
+) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
     private var cache: SimpleCache? = null
 
@@ -113,7 +117,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     init {
         if (cacheConfig != null) {
-            val cacheDir = File(context.cacheDir, "TrackPlayer")
+            val cacheDir = File(context.cacheDir, cacheConfig.identifier)
             val db: DatabaseProvider = StandaloneDatabaseProvider(context)
             cache = SimpleCache(cacheDir, LeastRecentlyUsedCacheEvictor(cacheConfig.maxCacheSize ?: 0), db)
         }
