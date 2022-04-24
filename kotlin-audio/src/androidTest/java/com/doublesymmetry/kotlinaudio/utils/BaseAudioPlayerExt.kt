@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit
 
 suspend fun BaseAudioPlayer.seekWithAssertion(duration: Long, unit: TimeUnit) {
     seek(duration, unit)
-    assertEventually(Duration.ofSeconds(1)) {
+    assertEventually {
         Assertions.assertEquals(Duration.ofSeconds(duration), Duration.ofMillis(position))
     }
 }

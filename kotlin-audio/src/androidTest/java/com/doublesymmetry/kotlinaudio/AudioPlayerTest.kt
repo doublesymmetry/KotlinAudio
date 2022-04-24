@@ -13,7 +13,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
-import java.time.Duration
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AudioPlayerTest {
@@ -48,7 +47,7 @@ class AudioPlayerTest {
             // TODO: Fix bug with load when you use it to add first item
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = false)
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(AudioPlayerState.READY, testPlayer.playerState)
             }
         }
@@ -58,7 +57,7 @@ class AudioPlayerTest {
             // TODO: Fix bug with load when you use it to add first item
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
             }
         }
@@ -79,7 +78,7 @@ class AudioPlayerTest {
                     }
             }
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
             }
         }
@@ -100,7 +99,7 @@ class AudioPlayerTest {
                     }
             }
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
             }
         }
@@ -124,7 +123,7 @@ class AudioPlayerTest {
                     }
             }
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(true, hasBeenPlaying)
                 // TODO: We probably expect this to be IDLE
 //                assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
@@ -146,7 +145,7 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertTrue(testPlayer.position > 0)
             }
         }
@@ -176,7 +175,7 @@ class AudioPlayerTest {
                     }
             }
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertTrue(hasMetExpectation)
             }
         }
@@ -195,7 +194,7 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertNotNull(testPlayer.currentItem)
             }
         }
