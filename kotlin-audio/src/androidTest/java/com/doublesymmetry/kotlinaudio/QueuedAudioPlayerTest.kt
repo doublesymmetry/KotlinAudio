@@ -181,7 +181,7 @@ class QueuedAudioPlayerTest {
             testPlayer.add(listOf(TestSound.default, TestSound.long))
             testPlayer.next()
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(1, testPlayer.previousItems.size)
                 assertEquals(0, testPlayer.nextItems.size)
                 assertEquals(TestSound.long, testPlayer.currentItem)
@@ -194,7 +194,7 @@ class QueuedAudioPlayerTest {
             testPlayer.add(listOf(TestSound.default, TestSound.short), playWhenReady = false)
             testPlayer.next()
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(1, testPlayer.previousItems.size)
                 assertEquals(0, testPlayer.nextItems.size)
                 assertEquals(TestSound.short, testPlayer.currentItem)
@@ -212,7 +212,7 @@ class QueuedAudioPlayerTest {
             assertEquals(TestSound.default, testPlayer.currentItem)
             testPlayer.previous()
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(0, testPlayer.previousItems.size)
                 assertEquals(1, testPlayer.nextItems.size)
                 assertEquals(TestSound.long, testPlayer.currentItem)
@@ -227,7 +227,7 @@ class QueuedAudioPlayerTest {
             assertEquals(TestSound.short, testPlayer.currentItem)
             testPlayer.previous()
 
-            assertEventually(Duration.ofSeconds(1)) {
+            assertEventually {
                 assertEquals(0, testPlayer.previousItems.size)
                 assertEquals(1, testPlayer.nextItems.size)
                 assertEquals(TestSound.default, testPlayer.currentItem)
@@ -247,7 +247,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
                 testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -262,7 +262,7 @@ class QueuedAudioPlayerTest {
                 testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
                 testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.short, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
@@ -276,7 +276,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
                 testPlayer.next()
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -291,7 +291,7 @@ class QueuedAudioPlayerTest {
                 testPlayer.next()
                 testPlayer.next()
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -305,7 +305,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
                 testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.short, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
@@ -319,7 +319,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
                 testPlayer.next()
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -336,7 +336,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
                 testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
 
-                assertEventually(Duration.ofSeconds(2)) {
+                assertEventually {
                     assertTrue(testPlayer.position < 300)
                     assertEquals(1, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
@@ -351,7 +351,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
                 testPlayer.next()
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -380,7 +380,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
                 testPlayer.next()
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -397,7 +397,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
                 testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -412,7 +412,7 @@ class QueuedAudioPlayerTest {
                 testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
                 testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertEquals(1, testPlayer.nextItems.size)
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -426,7 +426,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
                 testPlayer.next()
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -441,7 +441,7 @@ class QueuedAudioPlayerTest {
                 testPlayer.next()
                 testPlayer.next()
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertEquals(1, testPlayer.nextItems.size)
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -470,7 +470,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
                 testPlayer.next()
 
-                assertEventually(Duration.ofSeconds(1)) {
+                assertEventually {
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
