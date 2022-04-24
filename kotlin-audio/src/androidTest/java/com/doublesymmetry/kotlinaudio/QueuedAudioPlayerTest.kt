@@ -365,7 +365,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
                 testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
 
-                assertEventually(Duration.ofSeconds(3)) {
+                assertEventually {
                     assertTrue(testPlayer.position < 300)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
@@ -455,7 +455,7 @@ class QueuedAudioPlayerTest {
                     com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
                 testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
 
-                assertEventually(Duration.ofSeconds(3)) {
+                assertEventually {
                     assertTrue(testPlayer.position < 300)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)

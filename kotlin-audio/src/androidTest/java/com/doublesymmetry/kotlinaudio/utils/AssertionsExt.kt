@@ -15,7 +15,7 @@ import java.time.Instant
  * @param assertionBlock the block of code to execute (run your assertions here)
  */
 suspend fun assertEventually(
-    maxDuration: Duration? = Duration.ofSeconds(2),
+    maxDuration: Duration? = Duration.ofSeconds(if (isCIEnv) 10 else 2),
     assertionDispatcher: CoroutineDispatcher = Dispatchers.Main,
     assertionBlock: () -> Unit,
 ) {
