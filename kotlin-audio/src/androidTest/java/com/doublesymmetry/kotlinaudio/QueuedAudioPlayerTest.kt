@@ -1,257 +1,204 @@
 package com.doublesymmetry.kotlinaudio
 
-import android.Manifest
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.rule.GrantPermissionRule
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.launch
-import org.awaitility.Awaitility.await
-import org.awaitility.kotlin.matches
-import org.awaitility.kotlin.untilCallTo
-import org.junit.Rule
+import com.doublesymmetry.kotlinaudio.utils.TestSound
+import com.doublesymmetry.kotlinaudio.utils.assertEventually
+import com.doublesymmetry.kotlinaudio.utils.seekWithAssertion
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInfo
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-private object SharedPlayer {
-    private var queuedAudioPlayer: QueuedAudioPlayer? = null
-
-    val instance: QueuedAudioPlayer
-        get() {
-            if (queuedAudioPlayer == null) {
-                val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-                queuedAudioPlayer = QueuedAudioPlayer(
-                    appContext,
-                    cacheConfig = CacheConfig(maxCacheSize = (1024 * 50).toLong())
-                )
-            }
-            return queuedAudioPlayer!!
-        }
-}
-
 class QueuedAudioPlayerTest {
-    private val scope = MainScope()
-
-    @Rule
-    var mRuntimePermissionRule: GrantPermissionRule = GrantPermissionRule.grant(Manifest.permission.INTERNET)
+    private lateinit var testPlayer: QueuedAudioPlayer
 
     @BeforeEach
-    fun setup() {
-        scope.launch {
-            SharedPlayer.instance.stop()
-        }
+    fun setUp(testInfo: TestInfo) {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        testPlayer = QueuedAudioPlayer(
+            appContext,
+            cacheConfig = CacheConfig(maxCacheSize = (1024 * 50).toLong(), identifier = testInfo.displayName)
+        )
     }
 
     @Nested
     inner class CurrentItem {
         @Test
-        fun thenReturnNull() {
-            scope.launch {
-                assertNull(SharedPlayer.instance.currentItem)
-            }
+        fun thenReturnNull() = runBlocking(Dispatchers.Main) {
+            assertNull(testPlayer.currentItem)
         }
 
         @Test
-        fun whenAddingOneItem_thenReturnNotNull() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
+        fun givenAddedOneItem_thenReturnNotNull() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
 
-                assertNotNull(SharedPlayer.instance.currentItem)
-            }
+            assertNotNull(testPlayer.currentItem)
         }
 
         @Test
-        fun whenAddingOneItemAndLoadingAnother_thenShouldHaveReplacedItem() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.load(shortTestSound, playWhenReady = false)
+        fun givenAddedOneItemAndLoadingAnother_thenShouldHaveReplacedItem() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.load(TestSound.short, playWhenReady = false)
 
-                assertEquals(shortTestSound.audioUrl, SharedPlayer.instance.currentItem?.audioUrl)
-            }
+            assertEquals(TestSound.short.audioUrl, testPlayer.currentItem?.audioUrl)
         }
 
         @Test
-        fun whenAddingMultipleItems_thenReturnNotNull() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
+        fun givenAddedMultipleItems_thenReturnNotNull() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
 
-                assertNotNull(SharedPlayer.instance.currentItem)
-            }
+            assertNotNull(testPlayer.currentItem)
         }
     }
 
     @Nested
     inner class NextItems {
         @Test
-        fun thenBeEmpty() {
-            scope.launch {
-                assertTrue(SharedPlayer.instance.nextItems.isEmpty())
-            }
+        fun thenBeEmpty() = runBlocking(Dispatchers.Main) {
+            assertTrue(testPlayer.nextItems.isEmpty())
         }
 
         @Test
-        fun whenAddingTwoItems_thenShouldContainOneItem() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
+        fun givenAddedTwoItems_thenShouldContainOneItem() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
 
-                assertEquals(1, SharedPlayer.instance.nextItems.size)
-            }
+            assertEquals(1, testPlayer.nextItems.size)
         }
 
         @Test
-        fun whenAddingTwoItemsAndCallingNext_thenShouldContainZeroItems() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.next()
+        fun givenAddedTwoItemsAndCallingNext_thenShouldContainZeroItems() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.next()
 
-                assertEquals(0, SharedPlayer.instance.nextItems.size)
-            }
+            assertEquals(0, testPlayer.nextItems.size)
         }
 
         @Test
-        fun whenAddingTwoItemsAndCallingNextAndCallingPrevious_thenShouldContainOneItem() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.next()
-                SharedPlayer.instance.previous()
+        fun givenAddedTwoItemsAndCallingNextAndPrevious_thenShouldContainOneItem() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.next()
+            testPlayer.previous()
 
-                assertEquals(1, SharedPlayer.instance.nextItems.size)
-            }
+            assertEquals(1, testPlayer.nextItems.size)
         }
 
         @Test
-        fun whenAddingTwoItemsAndRemovingOneItem_thenShouldBeEmpty() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.remove(1)
+        fun givenAddedTwoItemsAndRemovingLastItem_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.remove(1)
 
-                assertTrue(SharedPlayer.instance.nextItems.isEmpty())
-            }
+            assertTrue(testPlayer.nextItems.isEmpty())
         }
 
         @Test
-        fun whenAddingTwoItemsAndJumpingToLastItem_thenShouldBeEmpty() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.jumpToItem(1)
+        fun givenAddedTwoItemsAndJumpingToLast_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.jumpToItem(1)
 
-                assertTrue(SharedPlayer.instance.nextItems.isEmpty())
-            }
+            assertTrue(testPlayer.nextItems.isEmpty())
         }
 
         @Test
-        fun whenAddingTwoItemsAndRemovingUpcomingItems_thenShouldBeEmpty() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.removeUpcomingItems()
+        fun givenAddedTwoItemsAndRemovingUpcomingItems_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.removeUpcomingItems()
 
-                assertTrue(SharedPlayer.instance.nextItems.isEmpty())
-            }
+            assertTrue(testPlayer.nextItems.isEmpty())
         }
 
         @Test
-        fun whenAddingTwoItemsAndStopping_thenShouldBeEmpty() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.stop()
+        fun givenAddedTwoItemsAndStopping_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.stop()
 
-                assertTrue(SharedPlayer.instance.nextItems.isEmpty())
-            }
+            assertTrue(testPlayer.nextItems.isEmpty())
         }
     }
 
     @Nested
     inner class PreviousItems {
         @Test
-        fun thenShouleBeEmpty() {
-            assertTrue(SharedPlayer.instance.previousItems.isEmpty())
+        fun thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            assertTrue(testPlayer.previousItems.isEmpty())
         }
 
         @Test
-        fun whenAddingTwoItems_thenShouldBeEmpty() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
+        fun givenAddedTwoItems_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
 
-                assertEquals(0, SharedPlayer.instance.previousItems.size)
-            }
+            assertEquals(0, testPlayer.previousItems.size)
         }
 
         @Test
-        fun whenAddingTwoItemsAndCallingNext_thenShouldHaveOneItem() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.next()
+        fun givenAddedTwoItemsAndCallingNext_thenShouldHaveOneItem() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.next()
 
-                assertEquals(1, SharedPlayer.instance.previousItems.size)
-            }
+            assertEquals(1, testPlayer.previousItems.size)
         }
 
         @Test
-        fun whenAddingTwoItemsAndRemovingPreviousItems_thenShouldBeEmpty() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.next()
-                SharedPlayer.instance.removePreviousItems()
+        fun givenAddedTwoItemsAndRemovedPreviousItems_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.next()
+            testPlayer.removePreviousItems()
 
-                assertTrue(SharedPlayer.instance.previousItems.isEmpty())
-            }
+            assertTrue(testPlayer.previousItems.isEmpty())
         }
 
         @Test
-        fun whenAddingTwoItemsAndStopping_thenShouldBeEmpty() {
-            scope.launch {
-                SharedPlayer.instance.add(testSound, playWhenReady = false)
-                SharedPlayer.instance.add(shortTestSound, playWhenReady = false)
-                SharedPlayer.instance.stop()
+        fun givenAddedTwoItemsAndStopped_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.stop()
 
-                assertTrue(SharedPlayer.instance.previousItems.isEmpty())
-            }
+            assertTrue(testPlayer.previousItems.isEmpty())
         }
     }
 
     @Nested
     inner class OnNext {
         @Test
-        fun givenPlayerIsPlayingAndCallingNext_thenShouldGoToNextAndPlay() {
-            scope.launch {
-                SharedPlayer.instance.add(listOf(testSound, shortTestSound))
-                SharedPlayer.instance.next()
+        fun givenPlayerIsPlayingAndCallingNext_thenShouldGoToNextAndPlay() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(listOf(TestSound.default, TestSound.long))
+            testPlayer.next()
 
-                assertEquals(shortTestSound, SharedPlayer.instance.currentItem)
-                assertEquals(0, SharedPlayer.instance.nextItems.size)
-                assertEquals(1, SharedPlayer.instance.currentIndex)
-
-                assertEquals(AudioPlayerState.BUFFERING, SharedPlayer.instance.playerState)
+            assertEventually(Duration.ofSeconds(1)) {
+                assertEquals(1, testPlayer.previousItems.size)
+                assertEquals(0, testPlayer.nextItems.size)
+                assertEquals(TestSound.long, testPlayer.currentItem)
+                assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
             }
         }
 
         @Test
-        fun givenPlayerIsPausedAndCallingNext_thenShouldGoToNextAndNotPlay() {
-            scope.launch {
-                SharedPlayer.instance.add(listOf(testSound, shortTestSound), playWhenReady = false)
-                SharedPlayer.instance.pause()
-                SharedPlayer.instance.next()
+        fun givenPlayerIsPausedAndCallingNext_thenShouldGoToNextAndNotPlay() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(listOf(TestSound.default, TestSound.short), playWhenReady = false)
+            testPlayer.next()
 
-                assertEquals(shortTestSound, SharedPlayer.instance.currentItem)
-                assertEquals(0, SharedPlayer.instance.nextItems.size)
-                assertEquals(1, SharedPlayer.instance.currentIndex)
-
-                assertEquals(AudioPlayerState.LOADING, SharedPlayer.instance.playerState)
+            assertEventually(Duration.ofSeconds(1)) {
+                assertEquals(1, testPlayer.previousItems.size)
+                assertEquals(0, testPlayer.nextItems.size)
+                assertEquals(TestSound.short, testPlayer.currentItem)
+                assertEquals(AudioPlayerState.READY, testPlayer.playerState)
             }
         }
     }
@@ -259,37 +206,32 @@ class QueuedAudioPlayerTest {
     @Nested
     inner class OnPrevious {
         @Test
-        fun givenPlayerIsPlayingAndCallingPrevious_thenShouldGoToPreviousAndPlay() {
-            scope.launch {
-                SharedPlayer.instance.add(listOf(testSound, shortTestSound))
-                SharedPlayer.instance.next()
-                assertEquals(shortTestSound, SharedPlayer.instance.currentItem)
-                SharedPlayer.instance.previous()
+        fun givenPlayerIsPlayingAndCallingPrevious_thenShouldGoToPreviousAndPlay() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(listOf(TestSound.long, TestSound.default), playWhenReady = false)
+            testPlayer.next()
+            assertEquals(TestSound.default, testPlayer.currentItem)
+            testPlayer.previous()
 
-                assertEquals(testSound, SharedPlayer.instance.currentItem)
-                assertEquals(1, SharedPlayer.instance.nextItems.size)
-                assertEquals(0, SharedPlayer.instance.previousItems.size)
-                assertEquals(0, SharedPlayer.instance.currentIndex)
-
-                assertEquals(AudioPlayerState.BUFFERING, SharedPlayer.instance.playerState)
+            assertEventually(Duration.ofSeconds(1)) {
+                assertEquals(0, testPlayer.previousItems.size)
+                assertEquals(1, testPlayer.nextItems.size)
+                assertEquals(TestSound.long, testPlayer.currentItem)
+                assertEquals(AudioPlayerState.READY, testPlayer.playerState)
             }
         }
 
         @Test
-        fun givenPlayerIsPausedAndCallingPrevious_thenShouldGoToPreviousAndNotPlay() {
-            scope.launch {
-                SharedPlayer.instance.add(listOf(testSound, shortTestSound), playWhenReady = false)
-                SharedPlayer.instance.next()
-                assertEquals(shortTestSound, SharedPlayer.instance.currentItem)
-                SharedPlayer.instance.pause()
-                SharedPlayer.instance.previous()
+        fun givenPlayerIsPausedAndCallingPrevious_thenShouldGoToPreviousAndNotPlay() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(listOf(TestSound.default, TestSound.short), playWhenReady = false)
+            testPlayer.next()
+            assertEquals(TestSound.short, testPlayer.currentItem)
+            testPlayer.previous()
 
-                assertEquals(testSound, SharedPlayer.instance.currentItem)
-                assertEquals(1, SharedPlayer.instance.nextItems.size)
-                assertEquals(0, SharedPlayer.instance.previousItems.size)
-                assertEquals(0, SharedPlayer.instance.currentIndex)
-
-                assertEquals(AudioPlayerState.LOADING, SharedPlayer.instance.playerState)
+            assertEventually(Duration.ofSeconds(1)) {
+                assertEquals(0, testPlayer.previousItems.size)
+                assertEquals(1, testPlayer.nextItems.size)
+                assertEquals(TestSound.default, testPlayer.currentItem)
+                assertEquals(AudioPlayerState.READY, testPlayer.playerState)
             }
         }
     }
@@ -299,42 +241,241 @@ class QueuedAudioPlayerTest {
         @Nested
         inner class Off {
             @Test
-            fun whenAllowPlaybackToEnd_thenShouldMoveToNextItem() {
-                scope.launch {
-                    SharedPlayer.instance.add(listOf(testSound, shortTestSound))
-                    SharedPlayer.instance.playerOptions.repeatMode =
-                        com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
-                    SharedPlayer.instance.seek(0.0682.toLong(), TimeUnit.SECONDS)
-                    SharedPlayer.instance.play()
+            fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeOff_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.short, TestSound.long))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
+                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
 
-//                    await()
-//                        .pollInSameThread()
-//                        .atMost(5, TimeUnit.SECONDS)
-//                        .untilCallTo { SharedPlayer.instance.playerState }
-//                        .matches { it == AudioPlayerState.PLAYING }
-//
-//                    await()
-//                        .pollInSameThread()
-//                        .untilCallTo { SharedPlayer.instance.nextItems }
-//                        .matches { it?.isEmpty() == true }
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndAllowingPlaybackToEndTwice_whenRepeatModeOff_thenShouldStopPlayback() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.short, TestSound.short))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
+                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.short, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndCallingNext_whenRepeatModeOff_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.short, TestSound.long))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
+                testPlayer.next()
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndCallingNextTwice_thenShouldDoNothingOnSecondNext() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.short, TestSound.long))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
+                testPlayer.next()
+                testPlayer.next()
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedOneItemAndAllowingPlaybackToEnd_thenShouldStopPlayback() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(TestSound.short)
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
+                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.short, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedOneItemAndCallingNext_thenShouldDoNothing() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(TestSound.long)
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
+                testPlayer.next()
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                 }
             }
         }
-    }
 
-    companion object {
-        private val testSound = DefaultAudioItem(
-            "rawresource:///${R.raw.short_test_sound}", MediaType.DEFAULT,
-            options = AudioItemOptions(
-                resourceId = R.raw.test_sound,
-            )
-        )
+        @Nested
+        inner class Track {
+            @Test
+            fun givenAddedTwoItemsAndAllowingPlaybackToEnd_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.long, TestSound.short))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
+                testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
 
-        private val shortTestSound = DefaultAudioItem(
-            "rawresource:///${R.raw.short_test_sound}", MediaType.DEFAULT,
-            options = AudioItemOptions(
-                resourceId = R.raw.short_test_sound,
-            )
-        )
+                assertEventually(Duration.ofSeconds(2)) {
+                    assertTrue(testPlayer.position < 300)
+                    assertEquals(1, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndCallingNext_whenRepeatModeOne_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.short, TestSound.long))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
+                testPlayer.next()
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeOff_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(TestSound.long)
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
+                testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
+
+                assertEventually(Duration.ofSeconds(3)) {
+                    assertTrue(testPlayer.position < 300)
+                    assertEquals(0, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedOneItemAndCallingNext_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(TestSound.long)
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
+                testPlayer.next()
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertEquals(0, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+        }
+
+        @Nested
+        inner class Queue {
+            @Test
+            fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.short, TestSound.long))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
+                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndAllowingPlaybackToEndTwice_whenRepeatModeAll_thenShouldMoveToFirstTrackAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.long, TestSound.short))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
+                testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
+                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertEquals(1, testPlayer.nextItems.size)
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndCallingNext_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.short, TestSound.long))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
+                testPlayer.next()
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndCallingNextTwice_thenShouldMoveToFirstTrackAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(listOf(TestSound.long, TestSound.short))
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
+                testPlayer.next()
+                testPlayer.next()
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertEquals(1, testPlayer.nextItems.size)
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeAll_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(TestSound.long)
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
+                testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
+
+                assertEventually(Duration.ofSeconds(3)) {
+                    assertTrue(testPlayer.position < 300)
+                    assertEquals(0, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+
+            @Test
+            fun givenAddedOneItemAndCallingNext_whenRepeatModeAll_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(TestSound.long)
+                testPlayer.playerOptions.repeatMode =
+                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
+                testPlayer.next()
+
+                assertEventually(Duration.ofSeconds(1)) {
+                    assertEquals(0, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
+        }
     }
 }
