@@ -44,6 +44,8 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-boot-anim -camera-back none
           disable-animations: false
           script: echo "Generated AVD snapshot for caching."
+      - name: List Devices
+        run: avdmanager list device
       - name: Run Tests
         uses: ReactiveCircus/android-emulator-runner@v2.23.0
         with:
