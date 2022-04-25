@@ -35,7 +35,10 @@ class NotificationManager internal constructor(private val context: Context, pri
     var notificationMetadata: NotificationMetadata? = null
         set(value) {
             field = value
-            reload()
+
+            scope.launch {
+                reload()
+            }
         }
 
     var ratingType: Int = RatingCompat.RATING_NONE
@@ -254,7 +257,7 @@ class NotificationManager internal constructor(private val context: Context, pri
     }
 
     // FIXME: This functions seems wrong. It does not do what the name suggests...
-    fun clearNotification() = scope.launch {
+    fun clearNotification() {
         mediaSession.isActive = false
         internalManager?.setPlayer(null)
     }
@@ -268,12 +271,16 @@ class NotificationManager internal constructor(private val context: Context, pri
     override fun onNotificationPosted(notificationId: Int, notification: Notification, ongoing: Boolean) {
         scope.launch {
             event.updateNotificationState(NotificationState.POSTED(notificationId, notification, ongoing))
+
+            reload()
         }
     }
 
     override fun onNotificationCancelled(notificationId: Int, dismissedByUser: Boolean) {
         scope.launch {
             event.updateNotificationState(NotificationState.CANCELLED(notificationId))
+
+            reload()
         }
     }
 
@@ -291,9 +298,9 @@ class NotificationManager internal constructor(private val context: Context, pri
     }
 
     internal fun destroy() = scope.launch {
+        internalManager?.setPlayer(null)
         mediaSession.isActive = false
         descriptionAdapter.release()
-        internalManager?.setPlayer(null)
     }
 
     private fun reload() = scope.launch {
