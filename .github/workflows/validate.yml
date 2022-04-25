@@ -52,12 +52,15 @@ jobs:
           ram-size: 4096M
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew :kotlin-audio:connectedCheck
+          script: |
+            adb logcat -c
+            adb logcat &
+            ./gradlew :kotlin-audio:connectedCheck --stacktrace
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v3
         if: github.repository_owner == 'doublesymmetry' # always run even if the previous step fails if the source is from the doublesymmetry org
         with:
-          report_paths: 'kotlin-audio/build/outputs/androidTest-results/**/*.xml'
+          report_paths: 'kotlin-audio/build/outputs/androidTest-results/**/TEST-*.xml'
   build-sample:
     runs-on: macos-latest
     steps:
