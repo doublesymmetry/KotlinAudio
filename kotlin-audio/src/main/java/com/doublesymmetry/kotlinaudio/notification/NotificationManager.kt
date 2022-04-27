@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val event: NotificationEventHolder) :
     PlayerNotificationManager.PrimaryActionReceiver, PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: DescriptionAdapter
-    private var internalManager: PlayerNotificationManager? = null
+    private var internalManager: InternalNotificationManager? = null
 
     private val mediaSession: MediaSessionCompat = MediaSessionCompat(context, "AudioPlayerSession")
     private val mediaSessionConnector: MediaSessionConnector = MediaSessionConnector(mediaSession)
@@ -195,7 +195,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }, context, config.pendingIntent)
 
-        internalManager = PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID).apply {
+        internalManager = InternalNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID).apply {
             setChannelNameResourceId(R.string.playback_channel_name)
             setMediaDescriptionAdapter(descriptionAdapter)
             setNotificationListener(this@NotificationManager)
