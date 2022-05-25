@@ -40,6 +40,7 @@ sealed class NotificationButton(@DrawableRes val icon: Int?) {
     class BACKWARD(@DrawableRes icon: Int? = null, val isCompact: Boolean = false): NotificationButton(icon)
     class NEXT(@DrawableRes icon: Int? = null, val isCompact: Boolean = false): NotificationButton(icon)
     class PREVIOUS(@DrawableRes icon: Int? = null, val isCompact: Boolean = false): NotificationButton(icon)
+    class SEEK(@DrawableRes icon: Int? = null, val isCompact: Boolean = false, val position: Long): NotificationButton(icon)
 
     companion object {
         internal fun valueOf(value: String): NotificationButton {
