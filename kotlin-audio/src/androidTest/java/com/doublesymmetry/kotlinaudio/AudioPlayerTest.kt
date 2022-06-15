@@ -4,8 +4,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
 import com.doublesymmetry.kotlinaudio.models.CacheConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
-import com.doublesymmetry.kotlinaudio.utils.TestSound
-import com.doublesymmetry.kotlinaudio.utils.assertEventually
+import com.doublesymmetry.kotlinaudio.utils.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.junit.jupiter.api.Assertions.*
@@ -47,7 +46,7 @@ class AudioPlayerTest {
             // TODO: Fix bug with load when you use it to add first item
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = false)
-            assertEventually {
+            eventually {
                 assertEquals(AudioPlayerState.READY, testPlayer.playerState)
             }
         }
@@ -57,7 +56,7 @@ class AudioPlayerTest {
             // TODO: Fix bug with load when you use it to add first item
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
-            assertEventually {
+            eventually {
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
             }
         }
@@ -68,17 +67,13 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = false)
 
-            launch {
+            launchWithTimeoutSync(this) {
                 testPlayer.event.stateChange
-                    .take(2)
-                    .collect {
-                        if (it == AudioPlayerState.READY) {
-                            testPlayer.play()
-                        }
-                    }
+                    .waitUntil { it == AudioPlayerState.READY }
+                    .collect { testPlayer.play() }
             }
 
-            assertEventually {
+            eventually {
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
             }
         }
@@ -89,17 +84,13 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
 
-            launch {
+            launchWithTimeoutSync(this) {
                 testPlayer.event.stateChange
-                    .take(2)
-                    .collect {
-                        if (it == AudioPlayerState.PLAYING) {
-                            testPlayer.pause()
-                        }
-                    }
+                    .waitUntil { it == AudioPlayerState.PLAYING }
+                    .collect { testPlayer.pause() }
             }
 
-            assertEventually {
+            eventually {
                 assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
             }
         }
@@ -112,18 +103,16 @@ class AudioPlayerTest {
 
             var hasBeenPlaying = false
 
-            launch {
+            launchWithTimeoutSync(this) {
                 testPlayer.event.stateChange
-                    .take(2)
+                    .waitUntil { it == AudioPlayerState.PLAYING }
                     .collect {
-                        if (it == AudioPlayerState.PLAYING) {
-                            hasBeenPlaying = true
-                            testPlayer.stop()
-                        }
+                        hasBeenPlaying = true
+                        testPlayer.stop()
                     }
             }
 
-            assertEventually {
+            eventually {
                 assertEquals(true, hasBeenPlaying)
                 // TODO: We probably expect this to be IDLE
 //                assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
@@ -145,7 +134,7 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
 
-            assertEventually {
+            eventually {
                 assertTrue(testPlayer.position > 0)
             }
         }
@@ -164,19 +153,15 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
 
-            var hasMetExpectation = false
-            launch {
+            var hasMetSpeedExpectation = false
+            launchWithTimeoutSync(this) {
                 testPlayer.event.stateChange
-                    .take(2)
-                    .collect {
-                        if (it == AudioPlayerState.PLAYING) {
-                            hasMetExpectation = testPlayer.playbackSpeed == 1.0f
-                        }
-                    }
+                    .waitUntil { it == AudioPlayerState.PLAYING }
+                    .collect { hasMetSpeedExpectation = testPlayer.playbackSpeed == 1.0f }
             }
 
-            assertEventually {
-                assertTrue(hasMetExpectation)
+            eventually {
+                assertTrue(hasMetSpeedExpectation)
             }
         }
     }
@@ -194,7 +179,7 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
 
-            assertEventually {
+            eventually {
                 assertNotNull(testPlayer.currentItem)
             }
         }

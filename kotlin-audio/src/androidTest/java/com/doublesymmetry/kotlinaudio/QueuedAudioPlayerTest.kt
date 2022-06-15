@@ -3,17 +3,16 @@ package com.doublesymmetry.kotlinaudio
 import androidx.test.platform.app.InstrumentationRegistry
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
-import com.doublesymmetry.kotlinaudio.utils.TestSound
-import com.doublesymmetry.kotlinaudio.utils.assertEventually
-import com.doublesymmetry.kotlinaudio.utils.seekWithAssertion
+import com.doublesymmetry.kotlinaudio.utils.*
+import com.doublesymmetry.kotlinaudio.models.RepeatMode.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
-import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 class QueuedAudioPlayerTest {
@@ -181,7 +180,7 @@ class QueuedAudioPlayerTest {
             testPlayer.add(listOf(TestSound.default, TestSound.long))
             testPlayer.next()
 
-            assertEventually {
+            eventually {
                 assertEquals(1, testPlayer.previousItems.size)
                 assertEquals(0, testPlayer.nextItems.size)
                 assertEquals(TestSound.long, testPlayer.currentItem)
@@ -194,7 +193,7 @@ class QueuedAudioPlayerTest {
             testPlayer.add(listOf(TestSound.default, TestSound.short), playWhenReady = false)
             testPlayer.next()
 
-            assertEventually {
+            eventually {
                 assertEquals(1, testPlayer.previousItems.size)
                 assertEquals(0, testPlayer.nextItems.size)
                 assertEquals(TestSound.short, testPlayer.currentItem)
@@ -212,7 +211,7 @@ class QueuedAudioPlayerTest {
             assertEquals(TestSound.default, testPlayer.currentItem)
             testPlayer.previous()
 
-            assertEventually {
+            eventually {
                 assertEquals(0, testPlayer.previousItems.size)
                 assertEquals(1, testPlayer.nextItems.size)
                 assertEquals(TestSound.long, testPlayer.currentItem)
@@ -227,7 +226,7 @@ class QueuedAudioPlayerTest {
             assertEquals(TestSound.short, testPlayer.currentItem)
             testPlayer.previous()
 
-            assertEventually {
+            eventually {
                 assertEquals(0, testPlayer.previousItems.size)
                 assertEquals(1, testPlayer.nextItems.size)
                 assertEquals(TestSound.default, testPlayer.currentItem)
@@ -243,11 +242,19 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeOff_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
-                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+                testPlayer.playerOptions.repeatMode = OFF
 
-                assertEventually {
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                testPlayer.seekAndWaitCompletion(0.0682.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -257,12 +264,20 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndAllowingPlaybackToEndTwice_whenRepeatModeOff_thenShouldStopPlayback() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.short, TestSound.short))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
-                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
-                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+                testPlayer.playerOptions.repeatMode = OFF
+                testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
 
-                assertEventually {
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                testPlayer.seekAndWaitCompletion(0.0682.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.short, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
@@ -272,11 +287,20 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndCallingNext_whenRepeatModeOff_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
+                testPlayer.playerOptions.repeatMode = OFF
+
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
                 testPlayer.next()
 
-                assertEventually {
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -286,12 +310,11 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndCallingNextTwice_thenShouldDoNothingOnSecondNext() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
-                testPlayer.next()
+                testPlayer.playerOptions.repeatMode = OFF
+                testPlayer.nextAndWaitForNextTrackTransition()
                 testPlayer.next()
 
-                assertEventually {
+                eventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -301,11 +324,20 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedOneItemAndAllowingPlaybackToEnd_thenShouldStopPlayback() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(TestSound.short)
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
-                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+                testPlayer.playerOptions.repeatMode = OFF
 
-                assertEventually {
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                testPlayer.seekAndWaitCompletion(0.0682.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertFalse(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.short, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
@@ -315,11 +347,20 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedOneItemAndCallingNext_thenShouldDoNothing() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(TestSound.long)
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.OFF
+                testPlayer.playerOptions.repeatMode = OFF
+
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this, 300) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
                 testPlayer.next()
 
-                assertEventually {
+                eventually {
+                    assertFalse(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -329,14 +370,24 @@ class QueuedAudioPlayerTest {
 
         @Nested
         inner class Track {
+            //FAILS
             @Test
             fun givenAddedTwoItemsAndAllowingPlaybackToEnd_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.long, TestSound.short))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
-                testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
+                testPlayer.playerOptions.repeatMode = ONE
 
-                assertEventually {
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this, 4000) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.REPEAT }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                testPlayer.seekAndWaitCompletion(347.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.position < 300)
                     assertEquals(1, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
@@ -347,25 +398,44 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndCallingNext_whenRepeatModeOne_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
+                testPlayer.playerOptions.repeatMode = ONE
+
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.REPEAT }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
                 testPlayer.next()
 
-                assertEventually {
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                 }
             }
 
+            // FAILS
             @Test
-            fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeOff_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+            fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(TestSound.long)
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
-                testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
+                testPlayer.playerOptions.repeatMode = ONE
 
-                assertEventually {
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this, 10000) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.REPEAT }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                testPlayer.seekAndWaitCompletion(347.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.position < 300)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
@@ -373,14 +443,26 @@ class QueuedAudioPlayerTest {
                 }
             }
 
+            // FAILS
             @Test
             fun givenAddedOneItemAndCallingNext_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(TestSound.long)
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ONE
+                testPlayer.playerOptions.repeatMode = ONE
+
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.REPEAT }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                // TODO: Bug - calling next when repeat mode is ONE does not do anything.
                 testPlayer.next()
 
-                assertEventually {
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
+                    assertTrue(testPlayer.position < 300)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -393,11 +475,20 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
-                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+                testPlayer.playerOptions.repeatMode = ALL
 
-                assertEventually {
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                testPlayer.seekAndWaitCompletion(0.0682.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -406,13 +497,22 @@ class QueuedAudioPlayerTest {
 
             @Test
             fun givenAddedTwoItemsAndAllowingPlaybackToEndTwice_whenRepeatModeAll_thenShouldMoveToFirstTrackAndPlay() = runBlocking(Dispatchers.Main) {
-                testPlayer.add(listOf(TestSound.long, TestSound.short))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
-                testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
-                testPlayer.seekWithAssertion(0.0682.toLong(), TimeUnit.SECONDS)
+                testPlayer.add(listOf(TestSound.long, TestSound.long2))
+                testPlayer.playerOptions.repeatMode = ALL
+                testPlayer.seekAndWaitForNextTrackTransition(347.toLong(), TimeUnit.SECONDS)
 
-                assertEventually {
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                testPlayer.seekAndWaitCompletion(142.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertEquals(1, testPlayer.nextItems.size)
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -422,11 +522,20 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndCallingNext_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
+                testPlayer.playerOptions.repeatMode = ALL
+
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
                 testPlayer.next()
 
-                assertEventually {
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.nextItems.isEmpty())
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -436,26 +545,45 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndCallingNextTwice_thenShouldMoveToFirstTrackAndPlay() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(listOf(TestSound.long, TestSound.short))
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
-                testPlayer.next()
+                testPlayer.playerOptions.repeatMode = ALL
+                testPlayer.nextAndWaitForNextTrackTransition()
+
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
                 testPlayer.next()
 
-                assertEventually {
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertEquals(1, testPlayer.nextItems.size)
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                 }
             }
 
+            // FAILS
             @Test
             fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeAll_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(TestSound.long)
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
-                testPlayer.seekWithAssertion(347.toLong(), TimeUnit.SECONDS)
+                testPlayer.playerOptions.repeatMode = ALL
 
-                assertEventually {
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this, 2000) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
+                testPlayer.seekAndWaitCompletion(347.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertTrue(hasMetItemTransitionExpectation)
                     assertTrue(testPlayer.position < 300)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
@@ -463,14 +591,25 @@ class QueuedAudioPlayerTest {
                 }
             }
 
+            // FAILS
             @Test
             fun givenAddedOneItemAndCallingNext_whenRepeatModeAll_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
                 testPlayer.add(TestSound.long)
-                testPlayer.playerOptions.repeatMode =
-                    com.doublesymmetry.kotlinaudio.models.RepeatMode.ALL
+                testPlayer.playerOptions.repeatMode = ALL
+
+                // setup transition expectations
+                var hasMetItemTransitionExpectation = false
+                launchWithTimeoutSync(this, 2000) {
+                    testPlayer.event.audioItemTransition
+                        .waitUntil { it == AudioItemTransitionReason.AUTO }
+                        .collect { hasMetItemTransitionExpectation = true }
+                }
+
                 testPlayer.next()
 
-                assertEventually {
+                eventually {
+//                    assertTrue(hasMetItemTransitionExpectation)
+                    assertTrue(testPlayer.position < 300)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(0, testPlayer.currentIndex)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)

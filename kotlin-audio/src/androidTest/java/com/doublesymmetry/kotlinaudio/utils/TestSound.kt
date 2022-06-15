@@ -33,12 +33,22 @@ object TestSound {
         )
     )
 
+    /** A longer test case (track is around 6 minutes long). */
+    val long2 = DefaultAudioItem(
+        "rawresource:///${R.raw.longing}", MediaType.DEFAULT,
+        title = "Longing",
+        artwork = "https://react-native-track-player.js.org/example/Longing.jpeg",
+        artist = "David Chavez",
+        options = AudioItemOptions(
+            resourceId = R.raw.longing,
+        )
+    )
+
     /** A remote test case (track is around 6 minutes long). */
     val remote = DefaultAudioItem(
         "https://file-examples-com.github.io/uploads/2017/11/file_example_MP3_1MG.mp3", MediaType.DEFAULT,
         title = "Melodrama",
         artwork = "https://images-na.ssl-images-amazon.com/images/I/A18QUHExFgL._SL1500_.jpg",
         artist = "Lorde"
-
     )
 }
