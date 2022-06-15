@@ -1,9 +1,6 @@
 package com.doublesymmetry.kotlinaudio.utils
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import java.time.Duration
 import java.time.Instant
 
@@ -14,13 +11,13 @@ import java.time.Instant
  * @param assertionDispatcher the dispatcher to use for the assertion block (Main by default)
  * @param assertionBlock the block of code to execute (run your assertions here)
  */
-suspend fun assertEventually(
+suspend fun eventually(
     maxDuration: Duration? = Duration.ofSeconds(if (isCIEnv) 30 else 2),
     assertionDispatcher: CoroutineDispatcher = Dispatchers.Main,
     assertionBlock: () -> Unit,
 ) {
     withContext(Dispatchers.Default) {
-        eventually(maxDuration) {
+        eventuallyImpl(maxDuration) {
             withContext(assertionDispatcher) {
                 assertionBlock()
             }
@@ -32,7 +29,7 @@ suspend fun assertEventually(
  * @param maxDuration the duration during which the command will be retried after it fails exceptionally
  * @param command     the logic that fails exceptionally while its assertions are not successful
  */
-private suspend fun eventually(maxDuration: Duration?, command: suspend () -> Unit) {
+private suspend fun eventuallyImpl(maxDuration: Duration?, command: suspend () -> Unit) {
     val start: Instant = Instant.now()
     val max: Instant = start.plus(maxDuration)
     var failed: Boolean
