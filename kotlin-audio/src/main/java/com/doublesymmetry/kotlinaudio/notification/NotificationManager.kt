@@ -164,9 +164,9 @@ class NotificationManager internal constructor(private val context: Context, pri
 
     init {
         mediaSession.setCallback(object : MediaSessionCompat.Callback() {
-            override fun onSeekTo(pos: Long) {
-                super.onSeekTo(pos)
-                event.updateOnNotificationButtonTapped(NotificationButton.SEEK(position = pos))
+            override fun onSeekTo(position: Long) {
+                super.onSeekTo(position)
+                event.updateOnNotificationButtonTapped(NotificationButton.SEEK(position = position))
             }
         })
 
