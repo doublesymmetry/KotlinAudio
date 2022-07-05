@@ -5,6 +5,8 @@ import android.support.v4.media.RatingCompat
 
 
 sealed class MediaSessionCallback {
-    class RATING(val rating: RatingCompat, val extras: Bundle?): MediaSessionCallback()
+    class PLAY(val extras: Bundle?): MediaSessionCallback()
+    class PAUSE(val extras: Bundle?): MediaSessionCallback()
     class SEEK(val position: Long, val extras: Bundle?): MediaSessionCallback()
+    class RATING(val rating: RatingCompat, val extras: Bundle?): MediaSessionCallback()
 }
