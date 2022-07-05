@@ -163,14 +163,14 @@ class NotificationManager internal constructor(private val context: Context, pri
 
     init {
         mediaSession.setCallback(object : MediaSessionCompat.Callback() {
-            override fun onPause() {
-                super.onPause()
-                event.updateOnNotificationButtonTapped(NotificationButton.PAUSE(null))
-            }
-
             override fun onPlay() {
                 super.onPlay()
-                event.updateOnNotificationButtonTapped(NotificationButton.PLAY(null))
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PLAY(null))
+            }
+
+            override fun onPause() {
+                super.onPause()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE(null))
             }
 
             override fun onSeekTo(pos: Long) {
