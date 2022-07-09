@@ -162,6 +162,48 @@ class NotificationManager internal constructor(private val context: Context, pri
         }
 
     init {
+        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
+            override fun onPlay() {
+                super.onPlay()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PLAY(null))
+            }
+
+            override fun onPause() {
+                super.onPause()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE(null))
+            }
+
+            override fun onSkipToNext() {
+                super.onSkipToNext()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.NEXT(null))
+            }
+
+            override fun onSkipToPrevious() {
+                super.onSkipToPrevious()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PREVIOUS(null))
+            }
+
+            override fun onFastForward() {
+                super.onFastForward()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.FORWARD(null))
+            }
+
+            override fun onRewind() {
+                super.onRewind()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.REWIND(null))
+            }
+
+            override fun onStop() {
+                super.onStop()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.STOP(null))
+            }
+
+            override fun onSeekTo(pos: Long) {
+                super.onSeekTo(pos)
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.SEEK(position = pos, null))
+            }
+        })
+
         scope.launch {
             if (!isJUnitTest()) {
                 mediaSessionConnector.setPlayer(exoPlayer)
