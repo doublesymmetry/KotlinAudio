@@ -173,6 +173,31 @@ class NotificationManager internal constructor(private val context: Context, pri
                 event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE(null))
             }
 
+            override fun onSkipToNext() {
+                super.onSkipToNext()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.NEXT(null))
+            }
+
+            override fun onSkipToPrevious() {
+                super.onSkipToPrevious()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PREVIOUS(null))
+            }
+
+            override fun onFastForward() {
+                super.onFastForward()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.FORWARD(null))
+            }
+
+            override fun onRewind() {
+                super.onRewind()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.REWIND(null))
+            }
+
+            override fun onStop() {
+                super.onStop()
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.STOP(null))
+            }
+
             override fun onSeekTo(pos: Long) {
                 super.onSeekTo(pos)
                 event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.SEEK(position = pos, null))
