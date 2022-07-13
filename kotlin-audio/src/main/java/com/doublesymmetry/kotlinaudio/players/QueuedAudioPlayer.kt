@@ -74,12 +74,16 @@ class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null, ca
      * @param playWhenReady If this is `true` it will automatically start playback. Default is `true`.
      */
     fun add(item: AudioItem, playWhenReady: Boolean = true) {
+        val hasCurrentItem = currentItem != null
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue.add(mediaSource)
         exoPlayer.addMediaSource(mediaSource)
 
         exoPlayer.prepare()
-        exoPlayer.playWhenReady = playWhenReady
+
+        if (!hasCurrentItem && playWhenReady) {
+            exoPlayer.playWhenReady = playWhenReady
+        }
     }
 
     /**
@@ -88,12 +92,16 @@ class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null, ca
      * @param playWhenReady If this is `true` it will automatically start playback. Default is `true`.
      */
     fun add(items: List<AudioItem>, playWhenReady: Boolean = true) {
+        val hasCurrentItem = currentItem != null
         val mediaSources = items.map { getMediaSourceFromAudioItem(it) }
         queue.addAll(mediaSources)
         exoPlayer.addMediaSources(mediaSources)
 
         exoPlayer.prepare()
-        exoPlayer.playWhenReady = playWhenReady
+
+        if (!hasCurrentItem && playWhenReady) {
+            exoPlayer.playWhenReady = playWhenReady
+        }
     }
 
     /**
