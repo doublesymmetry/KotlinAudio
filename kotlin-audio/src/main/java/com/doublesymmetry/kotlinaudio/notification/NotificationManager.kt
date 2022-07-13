@@ -162,6 +162,13 @@ class NotificationManager internal constructor(private val context: Context, pri
         }
 
     init {
+        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
+            override fun onSeekTo(pos: Long) {
+                super.onSeekTo(pos)
+                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.SEEK(position = pos, null))
+            }
+        })
+
         scope.launch {
             if (!isJUnitTest()) {
                 mediaSessionConnector.setPlayer(exoPlayer)
