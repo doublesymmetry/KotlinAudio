@@ -39,4 +39,19 @@ sealed class NotificationButton(@DrawableRes val icon: Int?) {
     class BACKWARD(@DrawableRes icon: Int? = null, val isCompact: Boolean = false): NotificationButton(icon)
     class NEXT(@DrawableRes icon: Int? = null, val isCompact: Boolean = false): NotificationButton(icon)
     class PREVIOUS(@DrawableRes icon: Int? = null, val isCompact: Boolean = false): NotificationButton(icon)
+
+    companion object {
+        internal fun valueOf(value: String): NotificationButton {
+            return when(value) {
+                ACTION_PLAY -> PLAY()
+                ACTION_PAUSE -> PAUSE()
+                ACTION_STOP -> STOP()
+                ACTION_FAST_FORWARD -> FORWARD()
+                ACTION_REWIND -> BACKWARD()
+                ACTION_NEXT -> NEXT()
+                ACTION_PREVIOUS -> PREVIOUS()
+                else -> error("No such button exists")
+            }
+        }
+    }
 }

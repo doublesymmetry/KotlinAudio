@@ -90,6 +90,18 @@ class FirstFragment : Fragment() {
                         binding.textviewQueue.text = "${player.currentIndex + 1} / ${player.items.size}"
                     }
                 }
+
+                launch {
+                    player.event.onNotificationButtonTapped.collect {
+                        when (it) {
+                            is NotificationButton.PLAY -> player.play()
+                            is NotificationButton.PAUSE -> player.pause()
+                            is NotificationButton.NEXT -> player.next()
+                            is NotificationButton.PREVIOUS -> player.previous()
+                            else -> throw Error("This button has no function attached to it")
+                        }
+                    }
+                }
             }
         }
     }
