@@ -40,6 +40,7 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
     implementation 'io.coil-kt:coil:1.4.0'
     implementation 'androidx.media:media:1.6.0'
+    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
 
     api "com.google.android.exoplayer:exoplayer:2.18.0"
     api "com.google.android.exoplayer:extension-mediasession:2.18.0"

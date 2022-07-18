@@ -19,6 +19,11 @@ import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.util.Log
+
 
 class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val event: NotificationEventHolder) :
     PlayerNotificationManager.NotificationListener {
@@ -267,6 +272,22 @@ class NotificationManager internal constructor(private val context: Context, pri
                 }
             }
         }.build()
+
+        Log.d("RNTP", ">>>>>>>> packageName: " + context.packageName)
+        var intentFilter = IntentFilter("com.doublesymmetry.kotlinaudio.event")
+//        intentFilter.addAction(PlayerNotificationManager.ACTION_PLAY)
+//        intentFilter.addAction(PlayerNotificationManager.ACTION_PAUSE)
+//        intentFilter.addAction(PlayerNotificationManager.ACTION_PREVIOUS)
+//        intentFilter.addAction(PlayerNotificationManager.ACTION_NEXT)
+//        intentFilter.addAction(PlayerNotificationManager.ACTION_FAST_FORWARD)
+//        intentFilter.addAction(PlayerNotificationManager.ACTION_REWIND)
+//        intentFilter.addAction(PlayerNotificationManager.ACTION_STOP)
+        var manager: LocalBroadcastManager = LocalBroadcastManager.getInstance(context)
+        manager.registerReceiver(object : BroadcastReceiver () {
+            override fun onReceive(p0: Context?, p1: Intent?) {
+                Log.d("RNTP", ">>>>>>>> onReceive")
+            }
+        }, intentFilter);
 
         if (!isJUnitTest()) {
             internalManager?.apply {
