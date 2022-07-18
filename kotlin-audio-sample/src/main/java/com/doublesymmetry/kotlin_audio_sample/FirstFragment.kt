@@ -92,16 +92,16 @@ class FirstFragment : Fragment() {
                 }
 
                 launch {
-                        player.event.onNotificationButtonTapped.collect {
-                            when (it) {
-                                is NotificationButton.PLAY -> player.play()
-                                is NotificationButton.PAUSE -> player.pause()
-                                is NotificationButton.NEXT -> player.next()
-                                is NotificationButton.PREVIOUS -> player.previous()
-                                else -> throw Error("This button has no function attached to it")
-                            }
+                    player.event.onNotificationButtonTapped.collect {
+                        when (it) {
+                            is NotificationButton.PLAY -> player.play()
+                            is NotificationButton.PAUSE -> player.pause()
+                            is NotificationButton.NEXT -> player.next()
+                            is NotificationButton.PREVIOUS -> player.previous()
+                            else -> throw Error("This button has no function attached to it")
                         }
                     }
+                }
             }
         }
     }
