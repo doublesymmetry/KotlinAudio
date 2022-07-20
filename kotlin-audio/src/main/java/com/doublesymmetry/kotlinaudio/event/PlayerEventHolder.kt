@@ -3,6 +3,7 @@ package com.doublesymmetry.kotlinaudio.event
 import com.doublesymmetry.kotlinaudio.models.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -10,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class PlayerEventHolder {
-    private val coroutineScope = CoroutineScope(Dispatchers.Main)
+    private val coroutineScope = MainScope()
 
     private var _stateChange = MutableStateFlow(AudioPlayerState.IDLE)
     var stateChange = _stateChange.asStateFlow()
