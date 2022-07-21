@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioManager
 import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
+import android.util.Log
 import androidx.annotation.CallSuper
 import androidx.core.content.ContextCompat
 import androidx.media.AudioAttributesCompat
@@ -367,11 +368,20 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            // NOTE: that position is pretty much always `0` here. My theory is that this
+            // method is called _after_ the player has already transitioned to the next item
+            // meaning that `.position` is the position of the next item, not the last one
+            // which is what we care about.
+            Log.d("RNTP", ">>>>>>> onMediaTransition: " + position)
             when (reason) {
-                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.AUTO)
-                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.QUEUE_CHANGED)
-                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.REPEAT)
-                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM)
+                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ->
+                    playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.AUTO(position))
+                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED ->
+                    playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.QUEUE_CHANGED(position))
+                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT ->
+                    playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.REPEAT(position))
+                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK ->
+                    playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM(position))
             }
 
             if (automaticallyUpdateNotificationMetadata)
