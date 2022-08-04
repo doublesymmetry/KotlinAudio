@@ -2,7 +2,6 @@ package com.doublesymmetry.kotlinaudio.notification
 
 import android.app.Notification
 import android.content.Context
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.os.ResultReceiver
@@ -20,8 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val event: NotificationEventHolder) :
-    PlayerNotificationManager.PrimaryActionReceiver, PlayerNotificationManager.NotificationListener {
+class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: DescriptionAdapter
     private var internalManager: PlayerNotificationManager? = null
 
@@ -61,103 +59,95 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }
 
-    var showPlayPauseButton: Boolean
-        get() = internalManager?.usePlayPauseActions ?: false
+    var showPlayPauseButton = true
         set(value) {
             scope.launch {
-                internalManager?.usePlayPauseActions = value
+                field = value
+                internalManager?.setUsePlayPauseActions(value)
             }
         }
 
-    var showStopButton: Boolean
-        get() = internalManager?.useStopAction ?: false
+    var showStopButton = true
         set(value) {
             scope.launch {
-                internalManager?.useStopAction = value
+                field = value
+                internalManager?.setUseStopAction(value)
             }
         }
 
-    var showStopButtonCompact: Boolean
-        get() = internalManager?.useStopActionInCompactView ?: false
+    var showForwardButton = true
         set(value) {
             scope.launch {
-                internalManager?.useStopActionInCompactView = value
-            }
-        }
-
-    var showForwardButton: Boolean
-        get() = internalManager?.useFastForwardAction ?: false
-        set(value) {
-            scope.launch {
-                internalManager?.useFastForwardAction = value
+                field = value
+                internalManager?.setUseFastForwardAction(value)
             }
         }
 
     /**
      * Controls whether or not this button should appear when the notification is compact (collapsed).
      */
-    var showForwardButtonCompact: Boolean
-        get() = internalManager?.useFastForwardActionInCompactView ?: false
+    var showForwardButtonCompact = true
         set(value) {
             scope.launch {
-                internalManager?.useFastForwardActionInCompactView = value
+                field = value
+                internalManager?.setUseFastForwardActionInCompactView(value)
             }
         }
 
-    var showBackwardButton: Boolean
-        get() = internalManager?.useRewindAction ?: false
+    var showRewindButton = true
         set(value) {
             scope.launch {
-                internalManager?.useRewindAction = value
-            }
-        }
-
-    /**
-     * Controls whether or not this button should appear when the notification is compact (collapsed).
-     */
-    var showBackwardButtonCompact: Boolean
-        get() = internalManager?.useRewindActionInCompactView ?: false
-        set(value) {
-            scope.launch {
-                internalManager?.useRewindActionInCompactView = value
-            }
-        }
-
-    var showNextButton: Boolean
-        get() = internalManager?.useNextAction ?: false
-        set(value) {
-            scope.launch {
-                internalManager?.useNextAction = value
+                field = value
+                internalManager?.setUseRewindAction(value)
             }
         }
 
     /**
      * Controls whether or not this button should appear when the notification is compact (collapsed).
      */
-    var showNextButtonCompact: Boolean
-        get() = internalManager?.useNextActionInCompactView ?: false
+    var showRewindButtonCompact = true
         set(value) {
             scope.launch {
-                internalManager?.useNextActionInCompactView = value
+                field = value
+                internalManager?.setUseRewindActionInCompactView(value)
             }
         }
 
-    var showPreviousButton: Boolean
-        get() = internalManager?.usePreviousAction ?: false
+    var showNextButton = true
         set(value) {
             scope.launch {
-                internalManager?.usePreviousAction = value
+                field = value
+                internalManager?.setUseNextAction(value)
             }
         }
 
     /**
      * Controls whether or not this button should appear when the notification is compact (collapsed).
      */
-    var showPreviousButtonCompact: Boolean
-        get() = internalManager?.usePreviousActionInCompactView ?: false
+    var showNextButtonCompact = true
         set(value) {
             scope.launch {
-                internalManager?.usePreviousActionInCompactView = value
+                field = value
+                internalManager?.setUseNextActionInCompactView(value)
+            }
+        }
+
+    var showPreviousButton = true
+        set(value) {
+            scope.launch {
+                field = value
+                internalManager?.setUsePreviousAction(value)
+            }
+        }
+
+    /**
+     * Controls whether or not this button should appear when the notification is compact (collapsed).
+     */
+    var showPreviousButtonCompact = true
+        set(value) {
+            scope.launch {
+                field = value
+                internalManager?.setUsePreviousActionInCompactView(value)
             }
         }
 
@@ -207,7 +197,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             setNotificationListener(this@NotificationManager)
 
             if (buttons.isNotEmpty()) {
-                setPrimaryActionReceiver(this@NotificationManager)
+//                setPrimaryActionReceiver(this@NotificationManager)
 
                 config.buttons.forEach { button ->
                     when (button) {
@@ -230,18 +220,19 @@ class NotificationManager internal constructor(private val context: Context, pri
 
                 config.buttons.forEach { button ->
                     when (button) {
-                        is NotificationButton.PLAY, is NotificationButton.PAUSE -> showPlayPauseButton = true
+                        is NotificationButton.PLAY, is NotificationButton.PAUSE -> {
+                            showPlayPauseButton = true
+                        }
                         is NotificationButton.STOP -> {
                             showStopButton = true
-                            showStopButtonCompact = button.isCompact
                         }
                         is NotificationButton.FORWARD -> {
                             showForwardButton = true
                             showForwardButtonCompact = button.isCompact
                         }
                         is NotificationButton.BACKWARD -> {
-                            showBackwardButton = true
-                            showBackwardButtonCompact = button.isCompact
+                            showRewindButton = true
+                            showRewindButtonCompact = button.isCompact
                         }
                         is NotificationButton.NEXT -> {
                             showNextButton = true
@@ -266,11 +257,11 @@ class NotificationManager internal constructor(private val context: Context, pri
         internalManager?.setPlayer(null)
     }
 
-    override fun onAction(player: Player, action: String, intent: Intent) {
-        scope.launch {
-            event.updateOnNotificationButtonTapped(NotificationButton.valueOf(action))
-        }
-    }
+//    override fun onAction(player: Player, action: String, intent: Intent) {
+//        scope.launch {
+//            event.updateOnNotificationButtonTapped(NotificationButton.valueOf(action))
+//        }
+//    }
 
     override fun onNotificationPosted(notificationId: Int, notification: Notification, ongoing: Boolean) {
         scope.launch {
