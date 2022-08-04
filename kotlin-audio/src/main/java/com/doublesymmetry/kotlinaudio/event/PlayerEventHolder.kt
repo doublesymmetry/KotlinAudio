@@ -1,6 +1,7 @@
 package com.doublesymmetry.kotlinaudio.event
 
 import com.doublesymmetry.kotlinaudio.models.*
+import com.google.android.exoplayer2.PlaybackException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -26,6 +27,9 @@ class PlayerEventHolder {
 
     private var _onPlaybackMetadata = MutableSharedFlow<PlaybackMetadata>(1)
     var onPlaybackMetadata = _onPlaybackMetadata.asSharedFlow()
+
+    private var _onPlaybackException = MutableSharedFlow<PlaybackException>(1)
+    var onPlaybackException = _onPlaybackException.asSharedFlow()
 
     internal fun updateAudioPlayerState(state: AudioPlayerState) {
         coroutineScope.launch {
@@ -55,6 +59,12 @@ class PlayerEventHolder {
     internal fun updateOnPlaybackMetadata(metadata: PlaybackMetadata) {
         coroutineScope.launch {
             _onPlaybackMetadata.emit(metadata)
+        }
+    }
+
+    internal fun updateOnPlaybackException(error: PlaybackException) {
+        coroutineScope.launch {
+            _onPlaybackException.emit(error)
         }
     }
 }

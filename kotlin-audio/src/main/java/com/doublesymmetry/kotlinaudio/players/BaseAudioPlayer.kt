@@ -387,5 +387,9 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
                 if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
             )
         }
+
+        override fun onPlayerError(error: PlaybackException) {
+            playerEventHolder.updateOnPlaybackException(error)
+        }
     }
 }

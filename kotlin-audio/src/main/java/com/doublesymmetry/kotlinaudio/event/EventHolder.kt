@@ -24,4 +24,7 @@ class EventHolder internal constructor(private val notificationEventHolder: Noti
 
     val onMediaSessionCallbackTriggered
         get() = notificationEventHolder.onMediaSessionCallbackTriggered
+
+    val onPlaybackException
+        get() = playerEventHolder.onPlaybackException
 }
