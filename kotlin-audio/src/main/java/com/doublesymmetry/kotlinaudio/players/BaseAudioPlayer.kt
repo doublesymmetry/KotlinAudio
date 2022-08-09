@@ -4,6 +4,9 @@ import android.content.Context
 import android.media.AudioManager
 import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
+import android.os.Bundle
+import android.os.ResultReceiver
+import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.CallSuper
 import androidx.core.content.ContextCompat
 import androidx.media.AudioAttributesCompat
@@ -23,6 +26,7 @@ import com.google.android.exoplayer2.DefaultLoadControl.*
 import com.google.android.exoplayer2.Player.Listener
 import com.google.android.exoplayer2.database.DatabaseProvider
 import com.google.android.exoplayer2.database.StandaloneDatabaseProvider
+import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.metadata.Metadata
 import com.google.android.exoplayer2.source.MediaSource
@@ -42,7 +46,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 
-abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener {
+abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener, MediaSessionCompat.Callback() {
     protected val exoPlayer: ExoPlayer
     private var cache: SimpleCache? = null
 
@@ -103,6 +107,9 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     private var hasAudioFocus = false
     private var wasDucking = false
 
+    private val mediaSession = MediaSessionCompat(context, "KotlinAudioPlayer")
+    private val mediaSessionConnector = MediaSessionConnector(mediaSession)
+
     init {
         if (cacheConfig != null) {
             val cacheDir = File(context.cacheDir, "TrackPlayer")
@@ -114,9 +121,21 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             if (bufferConfig != null) setLoadControl(setupBuffer(bufferConfig))
         }.build()
 
-        notificationManager = NotificationManager(context, exoPlayer, notificationEventHolder)
+        mediaSession.isActive = true
 
+        notificationManager = NotificationManager(context, exoPlayer, mediaSession.sessionToken, notificationEventHolder)
+
+        mediaSession.setCallback(MediaSessionCallback())
         exoPlayer.addListener(PlayerListener())
+        mediaSessionConnector.setPlayer(exoPlayer)
+//        PlaybackStateCompat.Builder().addCustomAction()
+        mediaSessionConnector.registerCustomCommandReceiver(object: MediaSessionConnector.CommandReceiver {
+            override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
+                Timber.d(command)
+                return true
+            }
+
+        })
     }
 
     private fun setupBuffer(bufferConfig: BufferConfig): DefaultLoadControl {
@@ -157,12 +176,12 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     fun play() {
         exoPlayer.play()
-        notificationManager.onPlay()
+//        notificationManager.onPlay()
     }
 
     fun pause() {
         exoPlayer.pause()
-        notificationManager.onPause()
+//        notificationManager.onPause()
     }
 
     /**
@@ -387,5 +406,9 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
                 if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
             )
         }
+    }
+
+    inner class MediaSessionCallback: MediaSessionCompat.Callback() {
+
     }
 }

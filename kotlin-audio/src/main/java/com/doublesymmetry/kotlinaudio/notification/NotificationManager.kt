@@ -3,28 +3,26 @@ package com.doublesymmetry.kotlinaudio.notification
 import android.app.Notification
 import android.content.Context
 import android.graphics.Color
-import android.os.Bundle
-import android.os.ResultReceiver
-import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
-import com.doublesymmetry.kotlinaudio.models.*
+import com.doublesymmetry.kotlinaudio.models.NotificationButton
+import com.doublesymmetry.kotlinaudio.models.NotificationConfig
+import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
+import com.doublesymmetry.kotlinaudio.models.NotificationState
 import com.doublesymmetry.kotlinaudio.utils.isJUnitTest
 import com.google.android.exoplayer2.ExoPlayer
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
+class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val mediaSessionToken: MediaSessionCompat.Token, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: DescriptionAdapter
-    private var internalManager: PlayerNotificationManager? = null
+    private var internalNotificationManager: PlayerNotificationManager? = null
 
-    private val mediaSession: MediaSessionCompat = MediaSessionCompat(context, "AudioPlayerSession")
-    private val mediaSessionConnector: MediaSessionConnector = MediaSessionConnector(mediaSession)
+//    private val mediaSession = MediaSessionCompat(context, "AudioPlayerSession")
+//    private val mediaSessionConnector = MediaSessionConnector(mediaSession)
 
     private val scope = CoroutineScope(Dispatchers.Main)
 
@@ -36,34 +34,34 @@ class NotificationManager internal constructor(private val context: Context, pri
             reload()
         }
 
-    var ratingType: Int = RatingCompat.RATING_NONE
-        set(value) {
-            field = value
-
-            scope.launch {
-                mediaSession.setRatingType(ratingType)
-                mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
-                    override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
-                        return true
-                    }
-
-                    override fun onSetRating(player: Player, rating: RatingCompat) {
-                        event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, null))
-                    }
-
-                    override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
-                        event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, extras))
-                    }
-
-                })
-            }
-        }
+//    var ratingType: Int = RatingCompat.RATING_NONE
+//        set(value) {
+//            field = value
+//
+//            scope.launch {
+//                mediaSession.setRatingType(ratingType)
+//                mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
+//                    override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
+//                        return true
+//                    }
+//
+//                    override fun onSetRating(player: Player, rating: RatingCompat) {
+//                        event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, null))
+//                    }
+//
+//                    override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
+//                        event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, extras))
+//                    }
+//
+//                })
+//            }
+//        }
 
     var showPlayPauseButton = true
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUsePlayPauseActions(value)
+                internalNotificationManager?.setUsePlayPauseActions(value)
             }
         }
 
@@ -71,7 +69,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUseStopAction(value)
+                internalNotificationManager?.setUseStopAction(value)
             }
         }
 
@@ -79,7 +77,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUseFastForwardAction(value)
+                internalNotificationManager?.setUseFastForwardAction(value)
             }
         }
 
@@ -90,7 +88,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUseFastForwardActionInCompactView(value)
+                internalNotificationManager?.setUseFastForwardActionInCompactView(value)
             }
         }
 
@@ -98,7 +96,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUseRewindAction(value)
+                internalNotificationManager?.setUseRewindAction(value)
             }
         }
 
@@ -109,7 +107,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUseRewindActionInCompactView(value)
+                internalNotificationManager?.setUseRewindActionInCompactView(value)
             }
         }
 
@@ -117,7 +115,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUseNextAction(value)
+                internalNotificationManager?.setUseNextAction(value)
             }
         }
 
@@ -128,7 +126,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUseNextActionInCompactView(value)
+                internalNotificationManager?.setUseNextActionInCompactView(value)
             }
         }
 
@@ -136,7 +134,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUsePreviousAction(value)
+                internalNotificationManager?.setUsePreviousAction(value)
             }
         }
 
@@ -147,24 +145,27 @@ class NotificationManager internal constructor(private val context: Context, pri
         set(value) {
             scope.launch {
                 field = value
-                internalManager?.setUsePreviousActionInCompactView(value)
+                internalNotificationManager?.setUsePreviousActionInCompactView(value)
             }
         }
 
-    init {
-        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
-            override fun onSeekTo(pos: Long) {
-                super.onSeekTo(pos)
-                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.SEEK(position = pos, null))
-            }
-        })
-
-        scope.launch {
-            if (!isJUnitTest()) {
-                mediaSessionConnector.setPlayer(exoPlayer)
-            }
-        }
-    }
+//    init {
+//        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
+//            override fun onSkipToNext() {
+//                super.onSkipToNext()
+//            }
+//            override fun onSeekTo(pos: Long) {
+//                super.onSeekTo(pos)
+//                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.SEEK(position = pos, null))
+//            }
+//        })
+//
+//        scope.launch {
+//            if (!isJUnitTest()) {
+//                mediaSessionConnector.setPlayer(exoPlayer)
+//            }
+//        }
+//    }
 
     /**
      * Create a media player notification that automatically updates.
@@ -191,7 +192,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }, context, config.pendingIntent)
 
-        internalManager = PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID).apply {
+        internalNotificationManager = PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID).apply {
             setChannelNameResourceId(R.string.playback_channel_name)
             setMediaDescriptionAdapter(descriptionAdapter)
             setNotificationListener(this@NotificationManager)
@@ -214,7 +215,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         }.build()
 
         if (!isJUnitTest()) {
-            internalManager?.apply {
+            internalNotificationManager?.apply {
                 setColor(config.accentColor ?: Color.TRANSPARENT)
                 config.smallIcon?.let { setSmallIcon(it) }
 
@@ -245,16 +246,14 @@ class NotificationManager internal constructor(private val context: Context, pri
                     }
                 }
 
-                setMediaSessionToken(mediaSession.sessionToken)
+                setMediaSessionToken(mediaSessionToken)
                 setPlayer(exoPlayer)
             }
         }
     }
 
-    // FIXME: This functions seems wrong. It does not do what the name suggests...
-    fun clearNotification() = scope.launch {
-        mediaSession.isActive = false
-        internalManager?.setPlayer(null)
+    fun hideNotification() = scope.launch {
+        internalNotificationManager?.setPlayer(null)
     }
 
 //    override fun onAction(player: Player, action: String, intent: Intent) {
@@ -275,27 +274,27 @@ class NotificationManager internal constructor(private val context: Context, pri
         }
     }
 
-    internal fun onPlay() = scope.launch {
-        mediaSession.isActive = true
-        reload()
-    }
-
-    internal fun onPause() = scope.launch {
-        reload()
-    }
-
-    fun onUnbind() = scope.launch {
-        reload()
-    }
+//    internal fun onPlay() = scope.launch {
+//        mediaSession.isActive = true
+//        reload()
+//    }
+//
+//    internal fun onPause() = scope.launch {
+//        reload()
+//    }
+//
+//    fun onUnbind() = scope.launch {
+//        reload()
+//    }
 
     internal fun destroy() = scope.launch {
-        mediaSession.isActive = false
+//        mediaSession.isActive = false
         descriptionAdapter.release()
-        internalManager?.setPlayer(null)
+        internalNotificationManager?.setPlayer(null)
     }
 
     private fun reload() = scope.launch {
-        internalManager?.invalidate()
+        internalNotificationManager?.invalidate()
     }
 
     companion object {
