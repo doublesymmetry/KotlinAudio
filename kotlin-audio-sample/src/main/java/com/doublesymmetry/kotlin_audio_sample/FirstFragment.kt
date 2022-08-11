@@ -18,6 +18,7 @@ import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 /**
  * A simple [Fragment] subclass as the default destination in the navigation.
@@ -59,6 +60,20 @@ class FirstFragment : Fragment() {
 
         binding.buttonPause.setOnClickListener {
             player.pause()
+        }
+
+        binding.buttonRewind.setOnClickListener {
+            var rewind = player.position
+            rewind -= 1000
+
+            player.seek(rewind, TimeUnit.MILLISECONDS)
+        }
+
+        binding.buttonForward.setOnClickListener {
+            var forward = player.position
+            forward += 1000
+
+            player.seek(forward, TimeUnit.MILLISECONDS)
         }
 
         setupNotification()
