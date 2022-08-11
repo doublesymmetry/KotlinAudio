@@ -1,10 +1,9 @@
 package com.doublesymmetry.kotlinaudio.models
 
 /**
- * Use these events to track when and why an [AudioItem] transitions to another.
- * Examples of an audio transition include changes to [AudioItem] queue, an [AudioItem] on repeat, skipping an [AudioItem], or simply when the [AudioItem] has finished.
+ * Use these events to track when and why the position of an [AudioItem] changes.
+ * Examples include changes to [AudioItem] queue, seeking, skipping, etc.
  */
-
 sealed class PositionChangedReason(val oldPosition: Long, val newPosition: Long) {
     /**
      * Position has changed because the player has automatically transitioned to the next [AudioItem].

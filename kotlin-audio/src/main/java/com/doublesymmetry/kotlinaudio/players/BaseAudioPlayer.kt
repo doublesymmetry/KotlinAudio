@@ -59,6 +59,8 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             else exoPlayer.duration
         }
 
+    private var oldPosition = 0L
+
     val position: Long
         get() {
             return if (exoPlayer.currentPosition == C.POSITION_UNSET.toLong()) 0
@@ -367,22 +369,24 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         }
 
         override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+            this@BaseAudioPlayer.oldPosition = oldPosition.positionMs
+            
             when(reason) {
-                Player.DISCONTINUITY_REASON_AUTO_TRANSITION -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.AUTO(oldPosition.contentPositionMs, newPosition.contentPositionMs))
-                Player.DISCONTINUITY_REASON_SEEK -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK(oldPosition.contentPositionMs, newPosition.contentPositionMs))
-                Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK_FAILED(oldPosition.contentPositionMs, newPosition.contentPositionMs))
-                Player.DISCONTINUITY_REASON_REMOVE -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.QUEUE_CHANGED(oldPosition.contentPositionMs, newPosition.contentPositionMs))
-                Player.DISCONTINUITY_REASON_SKIP -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SKIPPED_PERIOD(oldPosition.contentPositionMs, newPosition.contentPositionMs))
-                Player.DISCONTINUITY_REASON_INTERNAL -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.UNKNOWN(oldPosition.contentPositionMs, newPosition.contentPositionMs))
+                Player.DISCONTINUITY_REASON_AUTO_TRANSITION -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.AUTO(oldPosition.positionMs, newPosition.positionMs))
+                Player.DISCONTINUITY_REASON_SEEK -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK(oldPosition.positionMs, newPosition.positionMs))
+                Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK_FAILED(oldPosition.positionMs, newPosition.positionMs))
+                Player.DISCONTINUITY_REASON_REMOVE -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.QUEUE_CHANGED(oldPosition.positionMs, newPosition.positionMs))
+                Player.DISCONTINUITY_REASON_SKIP -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SKIPPED_PERIOD(oldPosition.positionMs, newPosition.positionMs))
+                Player.DISCONTINUITY_REASON_INTERNAL -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.UNKNOWN(oldPosition.positionMs, newPosition.positionMs))
             }
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             when (reason) {
-                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.AUTO)
-                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.QUEUE_CHANGED)
-                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.REPEAT)
-                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM)
+                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.AUTO(oldPosition))
+                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.QUEUE_CHANGED(oldPosition))
+                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.REPEAT(oldPosition))
+                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM(oldPosition))
             }
 
             if (automaticallyUpdateNotificationMetadata)
