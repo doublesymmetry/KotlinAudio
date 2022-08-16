@@ -6,6 +6,7 @@ import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
 import android.os.Bundle
 import android.os.ResultReceiver
+import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.CallSuper
 import androidx.core.content.ContextCompat
@@ -44,7 +45,6 @@ import com.google.android.exoplayer2.util.Util
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.TimeUnit
-
 
 abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
@@ -103,6 +103,26 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     private val notificationEventHolder = NotificationEventHolder()
     private val playerEventHolder = PlayerEventHolder()
 
+    var ratingType: Int = RatingCompat.RATING_NONE
+        set(value) {
+            field = value
+
+            mediaSession.setRatingType(ratingType)
+            mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
+                override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
+                    return true
+                }
+
+                override fun onSetRating(player: Player, rating: RatingCompat) {
+                    playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, null))
+                }
+
+                override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
+                    playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, extras))
+                }
+            })
+        }
+
     val event = EventHolder(notificationEventHolder, playerEventHolder)
 
     private var focus: AudioFocusRequestCompat? = null
@@ -127,18 +147,23 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
         notificationManager = NotificationManager(context, exoPlayer, mediaSession.sessionToken, notificationEventHolder)
 
-        mediaSession.setCallback(MediaSessionCallback())
+        mediaSession.setCallback(MediaSessionListener())
         exoPlayer.addListener(PlayerListener())
         mediaSessionConnector.setPlayer(exoPlayer)
 //        PlaybackStateCompat.Builder().addCustomAction()
-        mediaSessionConnector.registerCustomCommandReceiver(object: MediaSessionConnector.CommandReceiver {
-            override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
-                Timber.d(command)
-                return true
-            }
-
-        })
+//        mediaSessionConnector.registerCustomCommandReceiver(object: MediaSessionConnector.CommandReceiver {
+//            override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
+//                Timber.d(command)
+//                return true
+//            }
+//
+//        })
     }
+//
+//    override fun onMediaButtonEvent(mediaButtonEvent: Intent?): Boolean {
+//        Timber.d("WOW")
+//        return super.onMediaButtonEvent(mediaButtonEvent)
+//    }
 
     private fun setupBuffer(bufferConfig: BufferConfig): DefaultLoadControl {
         bufferConfig.apply {
@@ -301,10 +326,12 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
         focus = AudioFocusRequestCompat.Builder(AUDIOFOCUS_GAIN)
             .setOnAudioFocusChangeListener(this)
-            .setAudioAttributes(AudioAttributesCompat.Builder()
-                .setUsage(USAGE_MEDIA)
-                .setContentType(CONTENT_TYPE_MUSIC)
-                .build())
+            .setAudioAttributes(
+                AudioAttributesCompat.Builder()
+                    .setUsage(USAGE_MEDIA)
+                    .setContentType(CONTENT_TYPE_MUSIC)
+                    .build()
+            )
             .setWillPauseWhenDucked(playerOptions.alwaysPauseOnInterruption)
             .build()
 
@@ -423,7 +450,34 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         }
     }
 
-    inner class MediaSessionCallback: MediaSessionCompat.Callback() {
+    inner class MediaSessionListener : MediaSessionCompat.Callback() {
+        override fun onPlay() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PLAY)
+        }
 
+        override fun onPause() {
+            Timber.d("PAUSE")
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE)
+        }
+
+        override fun onSkipToNext() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.NEXT)
+        }
+
+        override fun onSkipToPrevious() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PREVIOUS)
+        }
+
+        override fun onFastForward() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.FORWARD)
+        }
+
+        override fun onRewind() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.REWIND)
+        }
+
+        override fun onStop() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.STOP)
+        }
     }
 }
