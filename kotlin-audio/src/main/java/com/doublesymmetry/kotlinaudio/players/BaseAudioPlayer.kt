@@ -448,7 +448,6 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         }
 
         override fun onPause() {
-            Timber.d("PAUSE")
             playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE)
         }
 
