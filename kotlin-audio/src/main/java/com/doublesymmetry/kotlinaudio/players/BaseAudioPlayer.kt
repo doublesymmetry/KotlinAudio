@@ -421,13 +421,14 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
                 Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM(oldPosition))
             }
 
-            if (automaticallyUpdateNotificationMetadata)
-                mediaSessionConnector.setMediaMetadataProvider {
-                    val mediaSource = currentItem?.let { item -> getMediaSourceFromAudioItem(item) }
-                    mediaSource?.getMediaMetadataCompat() ?: MediaMetadataCompat.Builder().build()
+            if (automaticallyUpdateNotificationMetadata) {
+                notificationManager.notificationMetadata = NotificationMetadata(currentItem?.title, currentItem?.artist, currentItem?.artwork)
+            }
 
-                }
-            notificationManager.notificationMetadata = NotificationMetadata(currentItem?.title, currentItem?.artist, currentItem?.artwork)
+            mediaSessionConnector.setMediaMetadataProvider {
+                val mediaSource = currentItem?.let { item -> getMediaSourceFromAudioItem(item) }
+                mediaSource?.getMediaMetadataCompat() ?: MediaMetadataCompat.Builder().build()
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {

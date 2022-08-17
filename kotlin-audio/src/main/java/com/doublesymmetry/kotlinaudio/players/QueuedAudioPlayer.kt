@@ -219,9 +219,9 @@ class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null, ca
 
     private inner class KotlinAudioQueueNavigator(mediaSession: MediaSessionCompat) : TimelineQueueNavigator(mediaSession) {
         override fun getMediaDescription(player: Player, windowIndex: Int): MediaDescriptionCompat {
-            val item = items[windowIndex]
+            val item = queue[windowIndex]
 
-            return item.mediaMetadataCompat.description
+            return item.getMediaMetadataCompat().description
         }
     }
 }

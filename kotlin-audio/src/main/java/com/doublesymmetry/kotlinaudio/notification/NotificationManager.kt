@@ -20,12 +20,7 @@ import kotlinx.coroutines.launch
 class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val mediaSessionToken: MediaSessionCompat.Token, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: DescriptionAdapter
     private var internalNotificationManager: PlayerNotificationManager? = null
-
-//    private val mediaSession = MediaSessionCompat(context, "AudioPlayerSession")
-//    private val mediaSessionConnector = MediaSessionConnector(mediaSession)
-
     private val scope = CoroutineScope(Dispatchers.Main)
-
     private val buttons = mutableSetOf<NotificationButton?>()
 
     var notificationMetadata: NotificationMetadata? = null
@@ -33,29 +28,6 @@ class NotificationManager internal constructor(private val context: Context, pri
             field = value
             reload()
         }
-
-//    var ratingType: Int = RatingCompat.RATING_NONE
-//        set(value) {
-//            field = value
-//
-//            scope.launch {
-//                mediaSession.setRatingType(ratingType)
-//                mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
-//                    override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
-//                        return true
-//                    }
-//
-//                    override fun onSetRating(player: Player, rating: RatingCompat) {
-//                        event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, null))
-//                    }
-//
-//                    override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
-//                        event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, extras))
-//                    }
-//
-//                })
-//            }
-//        }
 
     var showPlayPauseButton = true
         set(value) {
@@ -149,24 +121,6 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }
 
-//    init {
-//        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
-//            override fun onSkipToNext() {
-//                super.onSkipToNext()
-//            }
-//            override fun onSeekTo(pos: Long) {
-//                super.onSeekTo(pos)
-//                event.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.SEEK(position = pos, null))
-//            }
-//        })
-//
-//        scope.launch {
-//            if (!isJUnitTest()) {
-//                mediaSessionConnector.setPlayer(exoPlayer)
-//            }
-//        }
-//    }
-
     /**
      * Create a media player notification that automatically updates.
      *
@@ -198,8 +152,6 @@ class NotificationManager internal constructor(private val context: Context, pri
             setNotificationListener(this@NotificationManager)
 
             if (buttons.isNotEmpty()) {
-//                setPrimaryActionReceiver(this@NotificationManager)
-
                 config.buttons.forEach { button ->
                     when (button) {
                         is NotificationButton.PLAY -> button.icon?.let { setPlayActionIconResourceId(it) }
@@ -256,12 +208,6 @@ class NotificationManager internal constructor(private val context: Context, pri
         internalNotificationManager?.setPlayer(null)
     }
 
-//    override fun onAction(player: Player, action: String, intent: Intent) {
-//        scope.launch {
-//            event.updateOnNotificationButtonTapped(NotificationButton.valueOf(action))
-//        }
-//    }
-
     override fun onNotificationPosted(notificationId: Int, notification: Notification, ongoing: Boolean) {
         scope.launch {
             event.updateNotificationState(NotificationState.POSTED(notificationId, notification, ongoing))
@@ -274,21 +220,7 @@ class NotificationManager internal constructor(private val context: Context, pri
         }
     }
 
-//    internal fun onPlay() = scope.launch {
-//        mediaSession.isActive = true
-//        reload()
-//    }
-//
-//    internal fun onPause() = scope.launch {
-//        reload()
-//    }
-//
-//    fun onUnbind() = scope.launch {
-//        reload()
-//    }
-
     internal fun destroy() = scope.launch {
-//        mediaSession.isActive = false
         descriptionAdapter.release()
         internalNotificationManager?.setPlayer(null)
     }
