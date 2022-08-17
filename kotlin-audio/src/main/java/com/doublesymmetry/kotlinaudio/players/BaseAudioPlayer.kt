@@ -211,6 +211,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         notificationManager.destroy()
         exoPlayer.release()
         cache?.release()
+        mediaSession.isActive = false
     }
 
     fun seek(duration: Long, unit: TimeUnit) {
