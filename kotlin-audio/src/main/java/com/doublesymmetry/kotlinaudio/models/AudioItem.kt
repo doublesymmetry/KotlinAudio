@@ -1,7 +1,5 @@
 package com.doublesymmetry.kotlinaudio.models
 
-import android.support.v4.media.MediaMetadataCompat
-
 interface AudioItem {
     var audioUrl: String
     val type: MediaType
@@ -10,13 +8,6 @@ interface AudioItem {
     var albumTitle: String?
     val artwork: String?
     val options: AudioItemOptions?
-
-    val mediaMetadataCompat: MediaMetadataCompat
-        get() = MediaMetadataCompat.Builder()
-            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
-            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, albumTitle)
-            .build()
 }
 
 data class AudioItemOptions(

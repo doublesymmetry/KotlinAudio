@@ -6,6 +6,7 @@ import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
 import android.os.Bundle
 import android.os.ResultReceiver
+import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.CallSuper
@@ -190,12 +191,10 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     fun play() {
         exoPlayer.play()
-//        notificationManager.onPlay()
     }
 
     fun pause() {
         exoPlayer.pause()
-//        notificationManager.onPause()
     }
 
     /**
@@ -403,8 +402,8 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
         override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
             this@BaseAudioPlayer.oldPosition = oldPosition.positionMs
-            
-            when(reason) {
+
+            when (reason) {
                 Player.DISCONTINUITY_REASON_AUTO_TRANSITION -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.AUTO(oldPosition.positionMs, newPosition.positionMs))
                 Player.DISCONTINUITY_REASON_SEEK -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK(oldPosition.positionMs, newPosition.positionMs))
                 Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK_FAILED(oldPosition.positionMs, newPosition.positionMs))
@@ -423,7 +422,12 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             }
 
             if (automaticallyUpdateNotificationMetadata)
-                notificationManager.notificationMetadata = NotificationMetadata(currentItem?.title, currentItem?.artist, currentItem?.artwork)
+                mediaSessionConnector.setMediaMetadataProvider {
+                    val mediaSource = currentItem?.let { item -> getMediaSourceFromAudioItem(item) }
+                    mediaSource?.getMediaMetadataCompat() ?: MediaMetadataCompat.Builder().build()
+
+                }
+            notificationManager.notificationMetadata = NotificationMetadata(currentItem?.title, currentItem?.artist, currentItem?.artwork)
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
