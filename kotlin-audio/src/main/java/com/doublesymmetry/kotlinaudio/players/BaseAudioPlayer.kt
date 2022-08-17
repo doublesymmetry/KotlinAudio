@@ -150,20 +150,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         mediaSession.setCallback(MediaSessionListener())
         exoPlayer.addListener(PlayerListener())
         mediaSessionConnector.setPlayer(exoPlayer)
-//        PlaybackStateCompat.Builder().addCustomAction()
-//        mediaSessionConnector.registerCustomCommandReceiver(object: MediaSessionConnector.CommandReceiver {
-//            override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
-//                Timber.d(command)
-//                return true
-//            }
-//
-//        })
     }
-//
-//    override fun onMediaButtonEvent(mediaButtonEvent: Intent?): Boolean {
-//        Timber.d("WOW")
-//        return super.onMediaButtonEvent(mediaButtonEvent)
-//    }
 
     private fun setupBuffer(bufferConfig: BufferConfig): DefaultLoadControl {
         bufferConfig.apply {
