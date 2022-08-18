@@ -150,6 +150,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
         mediaSession.setCallback(MediaSessionListener())
         exoPlayer.addListener(PlayerListener())
+        exoPlayer.stop()
         mediaSessionConnector.setPlayer(exoPlayer)
     }
 
@@ -197,7 +198,11 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         exoPlayer.pause()
     }
 
-    open fun clearQueue() {
+    /**
+     * Stops playback, resetting the player and the queue. To use the player again, simply add a new [AudioItem].
+     */
+    open fun stop() {
+        exoPlayer.stop()
         exoPlayer.clearMediaItems()
     }
 
@@ -207,7 +212,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     @CallSuper
     open fun destroy() {
         abandonAudioFocusIfHeld()
-        clearQueue()
+        stop()
         notificationManager.destroy()
         exoPlayer.release()
         cache?.release()

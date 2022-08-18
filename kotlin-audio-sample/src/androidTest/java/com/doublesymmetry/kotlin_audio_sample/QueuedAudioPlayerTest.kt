@@ -6,11 +6,9 @@ import com.doublesymmetry.kotlin_audio_sample.utils.firstItem
 import com.doublesymmetry.kotlin_audio_sample.utils.secondItem
 import com.doublesymmetry.kotlinaudio.models.CacheConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
-
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
-
-import org.junit.Assert.*
 
 @RunWith(AndroidJUnit4::class)
 class QueuedAudioPlayerTest {
