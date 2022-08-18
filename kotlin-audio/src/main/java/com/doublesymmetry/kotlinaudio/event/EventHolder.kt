@@ -16,12 +16,9 @@ class EventHolder internal constructor(private val notificationEventHolder: Noti
     val onPlaybackMetadata
         get() = playerEventHolder.onPlaybackMetadata
 
-    val onNotificationButtonTapped
-        get() = notificationEventHolder.onNotificationButtonTapped
+    val onMediaSessionCallbackTriggered
+        get() = playerEventHolder.onMediaSessionCallbackTriggered
 
     val notificationStateChange
         get() = notificationEventHolder.notificationStateChange
-
-    val onMediaSessionCallbackTriggered
-        get() = notificationEventHolder.onMediaSessionCallbackTriggered
 }

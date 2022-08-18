@@ -1,15 +1,23 @@
 package com.doublesymmetry.kotlinaudio.players
 
 import android.content.Context
+import android.support.v4.media.MediaDescriptionCompat
+import android.support.v4.media.session.MediaSessionCompat
 import com.doublesymmetry.kotlinaudio.models.*
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.IllegalSeekPositionException
+import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.source.MediaSource
 import java.util.*
 
 class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null, cacheConfig: CacheConfig? = null) : BaseAudioPlayer(context, bufferConfig, cacheConfig) {
     private val queue = LinkedList<MediaSource>()
     override val playerOptions = QueuePlayerOptionsImpl(exoPlayer)
+
+    init {
+        mediaSessionConnector.setQueueNavigator(KotlinAudioQueueNavigator(mediaSession))
+    }
 
     val currentIndex
         get() = exoPlayer.currentWindowIndex
@@ -193,20 +201,22 @@ class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null, ca
         queue.subList(0, currentIndex).clear()
     }
 
-    /**
-     * Stop playback, resetting the player and queue.
-     */
     override fun stop() {
         super.stop()
         queue.clear()
     }
 
-    /**
-     * Stops and resets the player, as well as clears the queue. Only call this when you are finished using the player, otherwise use [pause].
-     */
     override fun destroy() {
         queue.clear()
         super.destroy()
+    }
+
+    private inner class KotlinAudioQueueNavigator(mediaSession: MediaSessionCompat) : TimelineQueueNavigator(mediaSession) {
+        override fun getMediaDescription(player: Player, windowIndex: Int): MediaDescriptionCompat {
+            val item = queue[windowIndex]
+
+            return item.getMediaMetadataCompat().description
+        }
     }
 }
 

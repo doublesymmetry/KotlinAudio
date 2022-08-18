@@ -4,6 +4,11 @@ import android.content.Context
 import android.media.AudioManager
 import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
+import android.os.Bundle
+import android.os.ResultReceiver
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.RatingCompat
+import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.CallSuper
 import androidx.core.content.ContextCompat
 import androidx.media.AudioAttributesCompat
@@ -23,6 +28,7 @@ import com.google.android.exoplayer2.DefaultLoadControl.*
 import com.google.android.exoplayer2.Player.Listener
 import com.google.android.exoplayer2.database.DatabaseProvider
 import com.google.android.exoplayer2.database.StandaloneDatabaseProvider
+import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.metadata.Metadata
 import com.google.android.exoplayer2.source.MediaSource
@@ -41,8 +47,7 @@ import timber.log.Timber
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-
-abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener, Listener {
+abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
     private var cache: SimpleCache? = null
 
@@ -99,11 +104,34 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     private val notificationEventHolder = NotificationEventHolder()
     private val playerEventHolder = PlayerEventHolder()
 
+    var ratingType: Int = RatingCompat.RATING_NONE
+        set(value) {
+            field = value
+
+            mediaSession.setRatingType(ratingType)
+            mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
+                override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
+                    return true
+                }
+
+                override fun onSetRating(player: Player, rating: RatingCompat) {
+                    playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, null))
+                }
+
+                override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
+                    playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, extras))
+                }
+            })
+        }
+
     val event = EventHolder(notificationEventHolder, playerEventHolder)
 
     private var focus: AudioFocusRequestCompat? = null
     private var hasAudioFocus = false
     private var wasDucking = false
+
+    protected val mediaSession = MediaSessionCompat(context, "KotlinAudioPlayer")
+    protected val mediaSessionConnector = MediaSessionConnector(mediaSession)
 
     init {
         if (cacheConfig != null) {
@@ -116,9 +144,14 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             if (bufferConfig != null) setLoadControl(setupBuffer(bufferConfig))
         }.build()
 
-        notificationManager = NotificationManager(context, exoPlayer, notificationEventHolder)
+        mediaSession.isActive = true
 
+        notificationManager = NotificationManager(context, exoPlayer, mediaSession.sessionToken, notificationEventHolder)
+
+        mediaSession.setCallback(MediaSessionListener())
         exoPlayer.addListener(PlayerListener())
+        exoPlayer.stop()
+        mediaSessionConnector.setPlayer(exoPlayer)
     }
 
     private fun setupBuffer(bufferConfig: BufferConfig): DefaultLoadControl {
@@ -159,16 +192,14 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     fun play() {
         exoPlayer.play()
-        notificationManager.onPlay()
     }
 
     fun pause() {
         exoPlayer.pause()
-        notificationManager.onPause()
     }
 
     /**
-     * Stops playback, resetting the player and queue.
+     * Stops playback, resetting the player and the queue. To use the player again, simply add a new [AudioItem].
      */
     open fun stop() {
         exoPlayer.stop()
@@ -185,6 +216,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         notificationManager.destroy()
         exoPlayer.release()
         cache?.release()
+        mediaSession.isActive = false
     }
 
     fun seek(duration: Long, unit: TimeUnit) {
@@ -282,10 +314,12 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
         focus = AudioFocusRequestCompat.Builder(AUDIOFOCUS_GAIN)
             .setOnAudioFocusChangeListener(this)
-            .setAudioAttributes(AudioAttributesCompat.Builder()
-                .setUsage(USAGE_MEDIA)
-                .setContentType(CONTENT_TYPE_MUSIC)
-                .build())
+            .setAudioAttributes(
+                AudioAttributesCompat.Builder()
+                    .setUsage(USAGE_MEDIA)
+                    .setContentType(CONTENT_TYPE_MUSIC)
+                    .build()
+            )
             .setWillPauseWhenDucked(playerOptions.alwaysPauseOnInterruption)
             .build()
 
@@ -370,8 +404,8 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
         override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
             this@BaseAudioPlayer.oldPosition = oldPosition.positionMs
-            
-            when(reason) {
+
+            when (reason) {
                 Player.DISCONTINUITY_REASON_AUTO_TRANSITION -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.AUTO(oldPosition.positionMs, newPosition.positionMs))
                 Player.DISCONTINUITY_REASON_SEEK -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK(oldPosition.positionMs, newPosition.positionMs))
                 Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK_FAILED(oldPosition.positionMs, newPosition.positionMs))
@@ -389,8 +423,14 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
                 Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM(oldPosition))
             }
 
-            if (automaticallyUpdateNotificationMetadata)
+            if (automaticallyUpdateNotificationMetadata) {
                 notificationManager.notificationMetadata = NotificationMetadata(currentItem?.title, currentItem?.artist, currentItem?.artwork)
+            }
+
+            mediaSessionConnector.setMediaMetadataProvider {
+                val mediaSource = currentItem?.let { item -> getMediaSourceFromAudioItem(item) }
+                mediaSource?.getMediaMetadataCompat() ?: MediaMetadataCompat.Builder().build()
+            }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -401,6 +441,36 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             playerEventHolder.updateAudioPlayerState(
                 if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
             )
+        }
+    }
+
+    inner class MediaSessionListener : MediaSessionCompat.Callback() {
+        override fun onPlay() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PLAY)
+        }
+
+        override fun onPause() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE)
+        }
+
+        override fun onSkipToNext() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.NEXT)
+        }
+
+        override fun onSkipToPrevious() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PREVIOUS)
+        }
+
+        override fun onFastForward() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.FORWARD)
+        }
+
+        override fun onRewind() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.REWIND)
+        }
+
+        override fun onStop() {
+            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.STOP)
         }
     }
 }

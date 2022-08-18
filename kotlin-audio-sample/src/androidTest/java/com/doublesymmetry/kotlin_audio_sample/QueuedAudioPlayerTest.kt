@@ -6,11 +6,9 @@ import com.doublesymmetry.kotlin_audio_sample.utils.firstItem
 import com.doublesymmetry.kotlin_audio_sample.utils.secondItem
 import com.doublesymmetry.kotlinaudio.models.CacheConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
-
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
-
-import org.junit.Assert.*
 
 @RunWith(AndroidJUnit4::class)
 class QueuedAudioPlayerTest {
@@ -134,7 +132,7 @@ class QueuedAudioPlayerTest {
         val audioPlayer = QueuedAudioPlayer(appContext)
 
         audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
-        audioPlayer.stop()
+        audioPlayer.clearQueue()
         assertEquals(audioPlayer.nextItems.size, 0)
     }
     //endregion
@@ -183,7 +181,7 @@ class QueuedAudioPlayerTest {
         val audioPlayer = QueuedAudioPlayer(appContext)
 
         audioPlayer.add(listOf(firstItem, secondItem), playWhenReady = false)
-        audioPlayer.stop()
+        audioPlayer.clearQueue()
         assertEquals(audioPlayer.previousItems.size, 0)
     }
     //endregion
