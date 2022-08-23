@@ -13,7 +13,7 @@ import java.util.*
 
 class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerConfig(), bufferConfig: BufferConfig? = null, cacheConfig: CacheConfig? = null) : BaseAudioPlayer(context, playerConfig, bufferConfig, cacheConfig) {
     private val queue = LinkedList<MediaSource>()
-    override val playerOptions = QueuedPlayerOptionsImpl(exoPlayer)
+    override val playerOptions = DefaultQueuedPlayerOptions(exoPlayer)
 
     init {
         mediaSessionConnector.setQueueNavigator(KotlinAudioQueueNavigator(mediaSession))
