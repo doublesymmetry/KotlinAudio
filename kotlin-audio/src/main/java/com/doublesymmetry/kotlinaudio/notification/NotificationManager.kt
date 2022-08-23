@@ -205,26 +205,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }
     }
-
-    private class CustomAction : CustomActionReceiver {
-        override fun createCustomActions(context: Context, instanceId: Int): MutableMap<String, NotificationCompat.Action> {
-            val action: NotificationCompat.Action = NotificationCompat.Action(context.resources.getIdentifier("music_clear", "drawable", context.packageName), "closeBar", null)
-            val actionMap: MutableMap<String, NotificationCompat.Action> = HashMap()
-            actionMap["closeBar"] = action
-            return actionMap
-        }
-
-        override fun getCustomActions(player: Player): List<String> {
-            val customActions: MutableList<String> = ArrayList()
-            customActions.add("closeBar")
-            return customActions
-        }
-
-        override fun onCustomAction(player: Player, action: String, intent: Intent) {
-//            Log.d("audio>>", "action: $action")
-        }
-    }
-
+    
     fun hideNotification() = scope.launch {
         internalNotificationManager?.setPlayer(null)
     }
