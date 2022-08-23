@@ -83,7 +83,7 @@ class PlayerEventHolder {
         }
     }
 
-    internal fun updateOnMediaSessionCallbackTriggered(callback: MediaSessionCallback) {
+    internal fun updateOnPlayerActionTriggeredExternally(callback: MediaSessionCallback) {
         coroutineScope.launch {
             _onPlayerActionTriggeredExternally.emit(callback)
         }

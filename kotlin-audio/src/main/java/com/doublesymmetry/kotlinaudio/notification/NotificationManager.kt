@@ -2,10 +2,8 @@ package com.doublesymmetry.kotlinaudio.notification
 
 import android.app.Notification
 import android.content.Context
-import android.content.Intent
 import android.graphics.Color
 import android.support.v4.media.session.MediaSessionCompat
-import androidx.core.app.NotificationCompat
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.models.NotificationButton
@@ -15,7 +13,6 @@ import com.doublesymmetry.kotlinaudio.models.NotificationState
 import com.doublesymmetry.kotlinaudio.utils.isJUnitTest
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
-import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

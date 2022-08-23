@@ -117,11 +117,11 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
                 }
 
                 override fun onSetRating(player: Player, rating: RatingCompat) {
-                    playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, null))
+                    playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.RATING(rating, null))
                 }
 
                 override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
-                    playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.RATING(rating, extras))
+                    playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.RATING(rating, extras))
                 }
             })
         }
@@ -160,31 +160,31 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     private fun createForwardingPlayer(): ForwardingPlayer {
         return object : ForwardingPlayer(exoPlayer) {
             override fun play() {
-                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PLAY)
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PLAY)
             }
 
             override fun pause() {
-                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE)
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PAUSE)
             }
 
             override fun seekToNext() {
-                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.NEXT)
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.NEXT)
             }
 
             override fun seekToPrevious() {
-                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PREVIOUS)
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PREVIOUS)
             }
 
             override fun seekForward() {
-                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.FORWARD)
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.FORWARD)
             }
 
             override fun seekBack() {
-                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.REWIND)
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.REWIND)
             }
 
             override fun stop() {
-                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.STOP)
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.STOP)
             }
         }
     }
