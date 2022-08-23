@@ -18,6 +18,7 @@ import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
@@ -103,6 +104,12 @@ class FirstFragment : Fragment() {
                         binding.textviewTitle.text = player.currentItem?.title
                         binding.textviewArtist.text = player.currentItem?.artist
                         binding.textviewQueue.text = "${player.currentIndex + 1} / ${player.items.size}"
+                    }
+                }
+
+                launch {
+                    player.event.onPlayerActionTriggeredExternally.collect {
+                        Timber.d(it.toString())
                     }
                 }
             }

@@ -11,6 +11,7 @@ interface QueuePlayerOptions : PlayerOptions {
 class QueuePlayerOptionsImpl(
     private val exoPlayer: ExoPlayer,
     override var alwaysPauseOnInterruption: Boolean = false,
+    override var interceptPlayerActionsTriggeredExternally: Boolean = false,
 ) : QueuePlayerOptions {
     // Functions in data classes might or might not be a bit of a code smell.
     // I'm using the passed exoPlayer which breaks separation of concerns. But it's also useful.

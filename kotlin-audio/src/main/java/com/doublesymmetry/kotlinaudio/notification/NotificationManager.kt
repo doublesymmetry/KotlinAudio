@@ -2,8 +2,10 @@ package com.doublesymmetry.kotlinaudio.notification
 
 import android.app.Notification
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.support.v4.media.session.MediaSessionCompat
+import androidx.core.app.NotificationCompat
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.models.NotificationButton
@@ -11,13 +13,15 @@ import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.NotificationState
 import com.doublesymmetry.kotlinaudio.utils.isJUnitTest
-import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
+import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val mediaSessionToken: MediaSessionCompat.Token, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
+
+class NotificationManager internal constructor(private val context: Context, private val player: Player, private val mediaSessionToken: MediaSessionCompat.Token, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: DescriptionAdapter
     private var internalNotificationManager: PlayerNotificationManager? = null
     private val scope = CoroutineScope(Dispatchers.Main)
@@ -170,7 +174,6 @@ class NotificationManager internal constructor(private val context: Context, pri
             internalNotificationManager?.apply {
                 setColor(config.accentColor ?: Color.TRANSPARENT)
                 config.smallIcon?.let { setSmallIcon(it) }
-
                 config.buttons.forEach { button ->
                     when (button) {
                         is NotificationButton.PLAY, is NotificationButton.PAUSE -> {
@@ -199,8 +202,27 @@ class NotificationManager internal constructor(private val context: Context, pri
                 }
 
                 setMediaSessionToken(mediaSessionToken)
-                setPlayer(exoPlayer)
+                setPlayer(player)
             }
+        }
+    }
+
+    private class CustomAction : CustomActionReceiver {
+        override fun createCustomActions(context: Context, instanceId: Int): MutableMap<String, NotificationCompat.Action> {
+            val action: NotificationCompat.Action = NotificationCompat.Action(context.resources.getIdentifier("music_clear", "drawable", context.packageName), "closeBar", null)
+            val actionMap: MutableMap<String, NotificationCompat.Action> = HashMap()
+            actionMap["closeBar"] = action
+            return actionMap
+        }
+
+        override fun getCustomActions(player: Player): List<String> {
+            val customActions: MutableList<String> = ArrayList()
+            customActions.add("closeBar")
+            return customActions
+        }
+
+        override fun onCustomAction(player: Player, action: String, intent: Intent) {
+//            Log.d("audio>>", "action: $action")
         }
     }
 

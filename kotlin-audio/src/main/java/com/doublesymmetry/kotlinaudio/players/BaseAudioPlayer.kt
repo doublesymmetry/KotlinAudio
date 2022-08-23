@@ -49,11 +49,18 @@ import java.util.concurrent.TimeUnit
 
 abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
+
     private var cache: SimpleCache? = null
 
     val notificationManager: NotificationManager
 
-    open val playerOptions: PlayerOptions = PlayerOptionsImpl()
+    open val playerOptions: PlayerOptions = DefaultPlayerOptions()
+
+    @Suppress("UNNECESSARY_SAFE_CALL")
+    private val forwardingPlayer: Player
+        get() {
+            return if (playerOptions?.interceptPlayerActionsTriggeredExternally == true) createForwardingPlayer() else exoPlayer
+        }
 
     open val currentItem: AudioItem?
         get() = exoPlayer.currentMediaItem?.localConfiguration?.tag as AudioItem?
@@ -146,12 +153,43 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
         mediaSession.isActive = true
 
-        notificationManager = NotificationManager(context, exoPlayer, mediaSession.sessionToken, notificationEventHolder)
+        notificationManager = NotificationManager(context, forwardingPlayer, mediaSession.sessionToken, notificationEventHolder)
 
-        mediaSession.setCallback(MediaSessionListener())
         exoPlayer.addListener(PlayerListener())
-        exoPlayer.stop()
-        mediaSessionConnector.setPlayer(exoPlayer)
+        mediaSessionConnector.setPlayer(forwardingPlayer)
+    }
+
+    private fun createForwardingPlayer(): ForwardingPlayer {
+        if (forwardingPlayer is ForwardingPlayer) return forwardingPlayer as ForwardingPlayer
+        else return object : ForwardingPlayer(exoPlayer) {
+            override fun play() {
+                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PLAY)
+            }
+
+            override fun pause() {
+                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE)
+            }
+
+            override fun seekToNext() {
+                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.NEXT)
+            }
+
+            override fun seekToPrevious() {
+                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PREVIOUS)
+            }
+
+            override fun seekForward() {
+                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.FORWARD)
+            }
+
+            override fun seekBack() {
+                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.REWIND)
+            }
+
+            override fun stop() {
+                playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.STOP)
+            }
+        }
     }
 
     private fun setupBuffer(bufferConfig: BufferConfig): DefaultLoadControl {
@@ -176,7 +214,6 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
      */
     open fun load(item: AudioItem, playWhenReady: Boolean = true) {
         val mediaSource = getMediaSourceFromAudioItem(item)
-
         exoPlayer.addMediaSource(mediaSource)
         exoPlayer.playWhenReady = playWhenReady
         exoPlayer.prepare()
@@ -441,36 +478,6 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             playerEventHolder.updateAudioPlayerState(
                 if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
             )
-        }
-    }
-
-    inner class MediaSessionListener : MediaSessionCompat.Callback() {
-        override fun onPlay() {
-            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PLAY)
-        }
-
-        override fun onPause() {
-            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PAUSE)
-        }
-
-        override fun onSkipToNext() {
-            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.NEXT)
-        }
-
-        override fun onSkipToPrevious() {
-            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PREVIOUS)
-        }
-
-        override fun onFastForward() {
-            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.FORWARD)
-        }
-
-        override fun onRewind() {
-            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.REWIND)
-        }
-
-        override fun onStop() {
-            playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.STOP)
         }
     }
 }
