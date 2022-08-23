@@ -42,6 +42,8 @@ class PlayerEventHolder {
      * Use these events to track whenever a player action has been triggered from an outside source.
      *
      * The sources can be: media buttons on headphones, Android Wear, Android Auto, Google Assistant, media notification, etc.
+     *
+     * For this observable to send events, set [interceptPlayerActionsTriggeredExternally][com.doublesymmetry.kotlinaudio.models.PlayerConfig.interceptPlayerActionsTriggeredExternally] to true.
      */
     var onPlayerActionTriggeredExternally = _onPlayerActionTriggeredExternally.asSharedFlow()
 

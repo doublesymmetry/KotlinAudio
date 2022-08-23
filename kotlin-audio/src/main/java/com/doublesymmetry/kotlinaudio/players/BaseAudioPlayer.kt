@@ -47,20 +47,15 @@ import timber.log.Timber
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-abstract class BaseAudioPlayer internal constructor(private val context: Context, bufferConfig: BufferConfig? = null, private val cacheConfig: CacheConfig? = null) : AudioManager.OnAudioFocusChangeListener {
+abstract class BaseAudioPlayer internal constructor(private val context: Context, playerConfig: PlayerConfig, private val bufferConfig: BufferConfig?, private val cacheConfig: CacheConfig?) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
+    private val forwardingPlayer: ForwardingPlayer
 
     private var cache: SimpleCache? = null
 
     val notificationManager: NotificationManager
 
     open val playerOptions: PlayerOptions = DefaultPlayerOptions()
-
-    @Suppress("UNNECESSARY_SAFE_CALL")
-    private val forwardingPlayer: Player
-        get() {
-            return if (playerOptions?.interceptPlayerActionsTriggeredExternally == true) createForwardingPlayer() else exoPlayer
-        }
 
     open val currentItem: AudioItem?
         get() = exoPlayer.currentMediaItem?.localConfiguration?.tag as AudioItem?
@@ -150,18 +145,20 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         exoPlayer = ExoPlayer.Builder(context).apply {
             if (bufferConfig != null) setLoadControl(setupBuffer(bufferConfig))
         }.build()
+        forwardingPlayer = createForwardingPlayer()
 
         mediaSession.isActive = true
 
-        notificationManager = NotificationManager(context, forwardingPlayer, mediaSession.sessionToken, notificationEventHolder)
+        val playerToUse = if (playerConfig.interceptPlayerActionsTriggeredExternally) forwardingPlayer else exoPlayer
+
+        notificationManager = NotificationManager(context, playerToUse, mediaSession.sessionToken, notificationEventHolder)
 
         exoPlayer.addListener(PlayerListener())
-        mediaSessionConnector.setPlayer(forwardingPlayer)
+        mediaSessionConnector.setPlayer(playerToUse)
     }
 
     private fun createForwardingPlayer(): ForwardingPlayer {
-        if (forwardingPlayer is ForwardingPlayer) return forwardingPlayer as ForwardingPlayer
-        else return object : ForwardingPlayer(exoPlayer) {
+        return object : ForwardingPlayer(exoPlayer) {
             override fun play() {
                 playerEventHolder.updateOnMediaSessionCallbackTriggered(MediaSessionCallback.PLAY)
             }

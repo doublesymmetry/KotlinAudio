@@ -3,16 +3,15 @@ package com.doublesymmetry.kotlinaudio.models
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.Player
 
-interface QueuePlayerOptions : PlayerOptions {
+interface QueuedPlayerOptions : PlayerOptions {
     override var alwaysPauseOnInterruption: Boolean
     var repeatMode: RepeatMode
 }
 
-class QueuePlayerOptionsImpl(
+class QueuedPlayerOptionsImpl(
     private val exoPlayer: ExoPlayer,
     override var alwaysPauseOnInterruption: Boolean = false,
-    override var interceptPlayerActionsTriggeredExternally: Boolean = false,
-) : QueuePlayerOptions {
+) : QueuedPlayerOptions {
     // Functions in data classes might or might not be a bit of a code smell.
     // I'm using the passed exoPlayer which breaks separation of concerns. But it's also useful.
     // More here: https://www.reddit.com/r/Kotlin/comments/ehqe4e/why_is_it_bad_practice_to_have_functions_in_data/
