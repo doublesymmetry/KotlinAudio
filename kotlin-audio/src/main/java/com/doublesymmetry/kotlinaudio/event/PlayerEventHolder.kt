@@ -36,8 +36,16 @@ class PlayerEventHolder {
     private var _onPlaybackMetadata = MutableSharedFlow<PlaybackMetadata>(1)
     var onPlaybackMetadata = _onPlaybackMetadata.asSharedFlow()
 
-    private var _onMediaSessionCallbackTriggered = MutableSharedFlow<MediaSessionCallback>()
-    var onMediaSessionCallbackTriggered = _onMediaSessionCallbackTriggered.asSharedFlow()
+    private var _onPlayerActionTriggeredExternally = MutableSharedFlow<MediaSessionCallback>()
+
+    /**
+     * Use these events to track whenever a player action has been triggered from an outside source.
+     *
+     * The sources can be: media buttons on headphones, Android Wear, Android Auto, Google Assistant, media notification, etc.
+     *
+     * For this observable to send events, set [interceptPlayerActionsTriggeredExternally][com.doublesymmetry.kotlinaudio.models.PlayerConfig.interceptPlayerActionsTriggeredExternally] to true.
+     */
+    var onPlayerActionTriggeredExternally = _onPlayerActionTriggeredExternally.asSharedFlow()
 
     internal fun updateAudioPlayerState(state: AudioPlayerState) {
         coroutineScope.launch {
@@ -75,9 +83,9 @@ class PlayerEventHolder {
         }
     }
 
-    internal fun updateOnMediaSessionCallbackTriggered(callback: MediaSessionCallback) {
+    internal fun updateOnPlayerActionTriggeredExternally(callback: MediaSessionCallback) {
         coroutineScope.launch {
-            _onMediaSessionCallbackTriggered.emit(callback)
+            _onPlayerActionTriggeredExternally.emit(callback)
         }
     }
 }

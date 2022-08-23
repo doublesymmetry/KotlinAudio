@@ -12,12 +12,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.doublesymmetry.kotlin_audio_sample.databinding.FragmentFirstBinding
 import com.doublesymmetry.kotlin_audio_sample.utils.firstItem
 import com.doublesymmetry.kotlin_audio_sample.utils.secondItem
-import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
-import com.doublesymmetry.kotlinaudio.models.NotificationButton
-import com.doublesymmetry.kotlinaudio.models.NotificationConfig
+import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.util.concurrent.TimeUnit
 
 /**
@@ -41,7 +40,7 @@ class FirstFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        player = QueuedAudioPlayer(requireActivity())
+        player = QueuedAudioPlayer(requireActivity(), playerConfig = PlayerConfig(interceptPlayerActionsTriggeredExternally = true))
         player.add(firstItem)
         player.add(secondItem)
         player.play()
@@ -103,6 +102,20 @@ class FirstFragment : Fragment() {
                         binding.textviewTitle.text = player.currentItem?.title
                         binding.textviewArtist.text = player.currentItem?.artist
                         binding.textviewQueue.text = "${player.currentIndex + 1} / ${player.items.size}"
+                    }
+                }
+
+                launch {
+                    player.event.onPlayerActionTriggeredExternally.collect {
+                        Timber.d(it.toString())
+                        when (it) {
+                            MediaSessionCallback.PLAY -> player.play()
+                            MediaSessionCallback.PAUSE -> player.pause()
+                            MediaSessionCallback.NEXT -> player.next()
+                            MediaSessionCallback.PREVIOUS -> player.previous()
+                            MediaSessionCallback.STOP -> player.stop()
+                            else -> Timber.d("Event not handled")
+                        }
                     }
                 }
             }

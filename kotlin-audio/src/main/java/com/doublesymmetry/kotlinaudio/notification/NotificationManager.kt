@@ -11,13 +11,13 @@ import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.NotificationState
 import com.doublesymmetry.kotlinaudio.utils.isJUnitTest
-import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class NotificationManager internal constructor(private val context: Context, private val exoPlayer: ExoPlayer, private val mediaSessionToken: MediaSessionCompat.Token, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
+class NotificationManager internal constructor(private val context: Context, private val player: Player, private val mediaSessionToken: MediaSessionCompat.Token, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: DescriptionAdapter
     private var internalNotificationManager: PlayerNotificationManager? = null
     private val scope = CoroutineScope(Dispatchers.Main)
@@ -170,7 +170,6 @@ class NotificationManager internal constructor(private val context: Context, pri
             internalNotificationManager?.apply {
                 setColor(config.accentColor ?: Color.TRANSPARENT)
                 config.smallIcon?.let { setSmallIcon(it) }
-
                 config.buttons.forEach { button ->
                     when (button) {
                         is NotificationButton.PLAY, is NotificationButton.PAUSE -> {
@@ -199,11 +198,11 @@ class NotificationManager internal constructor(private val context: Context, pri
                 }
 
                 setMediaSessionToken(mediaSessionToken)
-                setPlayer(exoPlayer)
+                setPlayer(player)
             }
         }
     }
-
+    
     fun hideNotification() = scope.launch {
         internalNotificationManager?.setPlayer(null)
     }

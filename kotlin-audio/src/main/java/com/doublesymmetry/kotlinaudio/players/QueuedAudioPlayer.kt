@@ -11,9 +11,9 @@ import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.source.MediaSource
 import java.util.*
 
-class QueuedAudioPlayer(context: Context, bufferConfig: BufferConfig? = null, cacheConfig: CacheConfig? = null) : BaseAudioPlayer(context, bufferConfig, cacheConfig) {
+class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerConfig(), bufferConfig: BufferConfig? = null, cacheConfig: CacheConfig? = null) : BaseAudioPlayer(context, playerConfig, bufferConfig, cacheConfig) {
     private val queue = LinkedList<MediaSource>()
-    override val playerOptions = QueuePlayerOptionsImpl(exoPlayer)
+    override val playerOptions = DefaultQueuedPlayerOptions(exoPlayer)
 
     init {
         mediaSessionConnector.setQueueNavigator(KotlinAudioQueueNavigator(mediaSession))
