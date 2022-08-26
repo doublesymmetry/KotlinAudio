@@ -188,6 +188,7 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
      */
     fun removeUpcomingItems() {
         val lastIndex = queue.lastIndex
+        if (lastIndex == -1) return
 
         exoPlayer.removeMediaItems(currentIndex, lastIndex)
         queue.subList(currentIndex, lastIndex).clear()

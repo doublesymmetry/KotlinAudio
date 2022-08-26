@@ -127,6 +127,16 @@ class QueuedAudioPlayerTest {
     }
 
     @Test
+    fun nextItems_when_no_items_should_be_empty() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val audioPlayer = QueuedAudioPlayer(appContext)
+
+        audioPlayer.add(emptyList(), playWhenReady = false)
+        audioPlayer.removeUpcomingItems()
+        assertEquals(audioPlayer.nextItems.size, 0)
+    }
+
+    @Test
     fun nextItems_when_adding_two_items_then_stopping_should_be_empty() {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
         val audioPlayer = QueuedAudioPlayer(appContext)
