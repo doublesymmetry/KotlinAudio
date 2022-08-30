@@ -62,21 +62,29 @@ class FirstFragment : Fragment() {
         }
 
         binding.buttonRewind.setOnClickListener {
-            var rewind = player.position
-            rewind -= 1000
-
-            player.seek(rewind, TimeUnit.MILLISECONDS)
+            seekBackward()
         }
 
         binding.buttonForward.setOnClickListener {
-            var forward = player.position
-            forward += 1000
-
-            player.seek(forward, TimeUnit.MILLISECONDS)
+            seekForward()
         }
 
         setupNotification()
         observeEvents()
+    }
+
+    private fun seekForward() {
+        var forward = player.position
+        forward += 1000
+
+        player.seek(forward, TimeUnit.MILLISECONDS)
+    }
+
+    private fun seekBackward() {
+        var rewind = player.position
+        rewind -= 1000
+
+        player.seek(rewind, TimeUnit.MILLISECONDS)
     }
 
     private fun observeEvents() {
@@ -114,6 +122,9 @@ class FirstFragment : Fragment() {
                             MediaSessionCallback.NEXT -> player.next()
                             MediaSessionCallback.PREVIOUS -> player.previous()
                             MediaSessionCallback.STOP -> player.stop()
+                            MediaSessionCallback.FORWARD -> seekForward()
+                            MediaSessionCallback.REWIND -> seekBackward()
+                            is MediaSessionCallback.SEEK -> player.seek(it.positionMs, TimeUnit.MILLISECONDS)
                             else -> Timber.d("Event not handled")
                         }
                     }
