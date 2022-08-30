@@ -1,7 +1,7 @@
 package com.doublesymmetry.kotlinaudio.models
 
 /**
- * Use these events to track when and why the position of an [AudioItem] changes.
+ * Use these events to track when and why the positionMs of an [AudioItem] changes.
  * Examples include changes to [AudioItem] queue, seeking, skipping, etc.
  */
 sealed class PositionChangedReason(val oldPosition: Long, val newPosition: Long) {
@@ -23,7 +23,7 @@ sealed class PositionChangedReason(val oldPosition: Long, val newPosition: Long)
     class SEEK(oldPosition: Long, newPosition: Long) : PositionChangedReason(oldPosition, newPosition)
 
     /**
-     * Position has changed because an attempted seek has failed. This can occur if we tried to see to an invalid position.
+     * Position has changed because an attempted seek has failed. This can occur if we tried to see to an invalid positionMs.
      */
     class SEEK_FAILED(oldPosition: Long, newPosition: Long) : PositionChangedReason(oldPosition, newPosition)
 

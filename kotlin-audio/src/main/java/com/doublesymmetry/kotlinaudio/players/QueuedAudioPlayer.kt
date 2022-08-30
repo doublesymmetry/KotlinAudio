@@ -151,7 +151,7 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
     }
 
     /**
-     * Move an item in the queue from one position to another.
+     * Move an item in the queue from one positionMs to another.
      * @param fromIndex The index of the item ot move.
      * @param toIndex The index to move the item to. If the index is larger than the size of the queue, the item is moved to the end of the queue instead.
      */

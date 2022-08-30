@@ -7,6 +7,7 @@ interface AudioItem {
     var title: String?
     var albumTitle: String?
     val artwork: String?
+    val duration: Long
     val options: AudioItemOptions?
 }
 
@@ -50,5 +51,6 @@ data class DefaultAudioItem(
     override var title: String? = null,
     override var albumTitle: String? = null,
     override val artwork: String? = null,
+    override val duration: Long = -1,
     override val options: AudioItemOptions? = null
 ) : AudioItem
