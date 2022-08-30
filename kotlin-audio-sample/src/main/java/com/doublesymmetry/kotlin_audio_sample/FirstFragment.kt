@@ -10,8 +10,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.doublesymmetry.kotlin_audio_sample.databinding.FragmentFirstBinding
-import com.doublesymmetry.kotlin_audio_sample.utils.firstItem
-import com.doublesymmetry.kotlin_audio_sample.utils.secondItem
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
 import kotlinx.coroutines.flow.collect
@@ -29,7 +27,8 @@ class FirstFragment : Fragment() {
     private lateinit var player: QueuedAudioPlayer
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
@@ -41,8 +40,8 @@ class FirstFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         player = QueuedAudioPlayer(requireActivity(), playerConfig = PlayerConfig(interceptPlayerActionsTriggeredExternally = true))
-        player.add(firstItem)
-        player.add(secondItem)
+        player.add(janelleSound)
+        player.add(lordeSound)
         player.play()
 
         binding.buttonNext.setOnClickListener {
@@ -84,6 +83,7 @@ class FirstFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     player.event.stateChange.collect {
+                        binding.textviewStatus.text = it.name
                         when (it) {
                             AudioPlayerState.PLAYING -> {
                                 binding.buttonPlay.isEnabled = false
@@ -129,7 +129,10 @@ class FirstFragment : Fragment() {
                 NotificationButton.PAUSE(),
                 NotificationButton.NEXT(),
                 NotificationButton.PREVIOUS()
-            ), null, null, null
+            ),
+            null,
+            null,
+            null
         )
         player.notificationManager.createNotification(notificationConfig)
     }
@@ -137,5 +140,26 @@ class FirstFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        private val janelleSound = DefaultAudioItem(
+            "rawresource:///${R.raw.kalimba}",
+            MediaType.DEFAULT,
+            title = "Dirty Computer",
+            artwork = "https://upload.wikimedia.org/wikipedia/en/0/0b/DirtyComputer.png",
+            artist = "Janelle Monáe",
+            options = AudioItemOptions(
+                resourceId = R.raw.kalimba
+            )
+        )
+
+        private val lordeSound = DefaultAudioItem(
+            "https://file-examples-com.github.io/uploads/2017/11/file_example_MP3_1MG.mp3",
+            MediaType.DEFAULT,
+            title = "Melodrama",
+            artwork = "https://images-na.ssl-images-amazon.com/images/I/A18QUHExFgL._SL1500_.jpg",
+            artist = "Lorde"
+        )
     }
 }
