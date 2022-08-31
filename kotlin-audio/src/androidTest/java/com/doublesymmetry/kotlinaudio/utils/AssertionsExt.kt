@@ -12,7 +12,7 @@ import java.time.Instant
  * @param assertionBlock the block of code to execute (run your assertions here)
  */
 suspend fun eventually(
-    maxDuration: Duration? = Duration.ofSeconds(if (isCIEnv) 30 else 2),
+    maxDuration: Duration? = Duration.ofSeconds(if (isCIEnv) 4 else 2),
     assertionDispatcher: CoroutineDispatcher = Dispatchers.Main,
     assertionBlock: () -> Unit,
 ) {

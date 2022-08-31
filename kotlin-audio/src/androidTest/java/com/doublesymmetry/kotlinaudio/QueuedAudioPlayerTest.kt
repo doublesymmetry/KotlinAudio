@@ -6,7 +6,6 @@ import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
 import com.doublesymmetry.kotlinaudio.utils.*
 import com.doublesymmetry.kotlinaudio.models.RepeatMode.*
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach

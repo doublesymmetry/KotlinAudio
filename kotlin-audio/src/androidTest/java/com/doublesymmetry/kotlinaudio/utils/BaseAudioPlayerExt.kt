@@ -11,15 +11,6 @@ import org.junit.jupiter.api.Assertions
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-suspend fun BaseAudioPlayer.seekAndWaitCompletion(duration: Long, unit: TimeUnit) {
-    seek(duration, unit)
-    CoroutineScope(Dispatchers.Default).launch {
-        eventually {
-            Assertions.assertEquals(Duration.ofSeconds(duration), Duration.ofMillis(position))
-        }
-    }.join()
-}
-
 suspend fun BaseAudioPlayer.seekAndWaitForNextTrackTransition(duration: Long, unit: TimeUnit) {
     seek(duration, unit)
     CoroutineScope(Dispatchers.Default).launch {
