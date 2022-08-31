@@ -10,17 +10,15 @@ import com.doublesymmetry.kotlinaudio.models.NotificationButton
 import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.NotificationState
-import com.doublesymmetry.kotlinaudio.utils.isJUnitTest
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 class NotificationManager internal constructor(private val context: Context, private val player: Player, private val mediaSessionToken: MediaSessionCompat.Token, private val event: NotificationEventHolder) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: DescriptionAdapter
     private var internalNotificationManager: PlayerNotificationManager? = null
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private val scope = MainScope()
     private val buttons = mutableSetOf<NotificationButton?>()
 
     var notificationMetadata: NotificationMetadata? = null
@@ -132,19 +130,23 @@ class NotificationManager internal constructor(private val context: Context, pri
             addAll(config.buttons)
         }
 
-        descriptionAdapter = DescriptionAdapter(object : NotificationMetadataProvider {
-            override fun getTitle(): String? {
-                return notificationMetadata?.title
-            }
+        descriptionAdapter = DescriptionAdapter(
+            object : NotificationMetadataProvider {
+                override fun getTitle(): String? {
+                    return notificationMetadata?.title
+                }
 
-            override fun getArtist(): String? {
-                return notificationMetadata?.artist
-            }
+                override fun getArtist(): String? {
+                    return notificationMetadata?.artist
+                }
 
-            override fun getArtworkUrl(): String? {
-                return notificationMetadata?.artworkUrl
-            }
-        }, context, config.pendingIntent)
+                override fun getArtworkUrl(): String? {
+                    return notificationMetadata?.artworkUrl
+                }
+            },
+            context,
+            config.pendingIntent
+        )
 
         internalNotificationManager = PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID).apply {
             setChannelNameResourceId(R.string.playback_channel_name)
@@ -166,43 +168,41 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }.build()
 
-        if (!isJUnitTest()) {
-            internalNotificationManager?.apply {
-                setColor(config.accentColor ?: Color.TRANSPARENT)
-                config.smallIcon?.let { setSmallIcon(it) }
-                config.buttons.forEach { button ->
-                    when (button) {
-                        is NotificationButton.PLAY, is NotificationButton.PAUSE -> {
-                            showPlayPauseButton = true
-                        }
-                        is NotificationButton.STOP -> {
-                            showStopButton = true
-                        }
-                        is NotificationButton.FORWARD -> {
-                            showForwardButton = true
-                            showForwardButtonCompact = button.isCompact
-                        }
-                        is NotificationButton.BACKWARD -> {
-                            showRewindButton = true
-                            showRewindButtonCompact = button.isCompact
-                        }
-                        is NotificationButton.NEXT -> {
-                            showNextButton = true
-                            showNextButtonCompact = button.isCompact
-                        }
-                        is NotificationButton.PREVIOUS -> {
-                            showPreviousButton = true
-                            showPreviousButtonCompact = button.isCompact
-                        }
+        internalNotificationManager?.apply {
+            setColor(config.accentColor ?: Color.TRANSPARENT)
+            config.smallIcon?.let { setSmallIcon(it) }
+            config.buttons.forEach { button ->
+                when (button) {
+                    is NotificationButton.PLAY, is NotificationButton.PAUSE -> {
+                        showPlayPauseButton = true
+                    }
+                    is NotificationButton.STOP -> {
+                        showStopButton = true
+                    }
+                    is NotificationButton.FORWARD -> {
+                        showForwardButton = true
+                        showForwardButtonCompact = button.isCompact
+                    }
+                    is NotificationButton.BACKWARD -> {
+                        showRewindButton = true
+                        showRewindButtonCompact = button.isCompact
+                    }
+                    is NotificationButton.NEXT -> {
+                        showNextButton = true
+                        showNextButtonCompact = button.isCompact
+                    }
+                    is NotificationButton.PREVIOUS -> {
+                        showPreviousButton = true
+                        showPreviousButtonCompact = button.isCompact
                     }
                 }
-
-                setMediaSessionToken(mediaSessionToken)
-                setPlayer(player)
             }
+
+            setMediaSessionToken(mediaSessionToken)
+            setPlayer(player)
         }
     }
-    
+
     fun hideNotification() = scope.launch {
         internalNotificationManager?.setPlayer(null)
     }
