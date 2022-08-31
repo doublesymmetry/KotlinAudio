@@ -120,6 +120,13 @@ class QueuedAudioPlayerTest {
         }
 
         @Test
+        fun giveNoItems_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
+            testPlayer.add(emptyList(), playWhenReady = false)
+            testPlayer.removeUpcomingItems()
+            assertEquals(testPlayer.nextItems.size, 0)
+        }
+
+        @Test
         fun givenAddedTwoItemsAndStopping_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
             testPlayer.add(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.short, playWhenReady = false)
