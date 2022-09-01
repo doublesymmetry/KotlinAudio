@@ -28,8 +28,11 @@ class FirstFragment : Fragment() {
 
     private lateinit var player: QueuedAudioPlayer
 
+    enum class SeekDirection { Forward, Backward }
+
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
+        inflater: LayoutInflater,
+        container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentFirstBinding.inflate(inflater, container, false)
@@ -62,29 +65,24 @@ class FirstFragment : Fragment() {
         }
 
         binding.buttonRewind.setOnClickListener {
-            seekBackward()
+            seek(SeekDirection.Backward)
         }
 
         binding.buttonForward.setOnClickListener {
-            seekForward()
+            seek(SeekDirection.Forward)
         }
 
         setupNotification()
         observeEvents()
     }
 
-    private fun seekForward() {
-        var forward = player.position
-        forward += 1000
+    private fun seek(direction: SeekDirection) {
+        val seekTime = when (direction) {
+            SeekDirection.Forward -> player.position + 1000
+            SeekDirection.Backward -> player.position - 1000L
+        }
 
-        player.seek(forward, TimeUnit.MILLISECONDS)
-    }
-
-    private fun seekBackward() {
-        var rewind = player.position
-        rewind -= 1000
-
-        player.seek(rewind, TimeUnit.MILLISECONDS)
+        player.seek(seekTime, TimeUnit.MILLISECONDS)
     }
 
     private fun observeEvents() {
@@ -122,8 +120,8 @@ class FirstFragment : Fragment() {
                             MediaSessionCallback.NEXT -> player.next()
                             MediaSessionCallback.PREVIOUS -> player.previous()
                             MediaSessionCallback.STOP -> player.stop()
-                            MediaSessionCallback.FORWARD -> seekForward()
-                            MediaSessionCallback.REWIND -> seekBackward()
+                            MediaSessionCallback.FORWARD -> seek(SeekDirection.Forward)
+                            MediaSessionCallback.REWIND -> seek(SeekDirection.Backward)
                             is MediaSessionCallback.SEEK -> player.seek(it.positionMs, TimeUnit.MILLISECONDS)
                             else -> Timber.d("Event not handled")
                         }
