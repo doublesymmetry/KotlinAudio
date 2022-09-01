@@ -200,6 +200,10 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             override fun stop() {
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.STOP)
             }
+
+            override fun seekTo(positionMs: Long) {
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.SEEK(positionMs))
+            }
         }
     }
 

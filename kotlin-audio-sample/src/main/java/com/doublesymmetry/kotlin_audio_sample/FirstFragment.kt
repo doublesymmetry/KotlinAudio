@@ -26,6 +26,8 @@ class FirstFragment : Fragment() {
 
     private lateinit var player: QueuedAudioPlayer
 
+    enum class SeekDirection { Forward, Backward }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -61,21 +63,24 @@ class FirstFragment : Fragment() {
         }
 
         binding.buttonRewind.setOnClickListener {
-            var rewind = player.position
-            rewind -= 1000
-
-            player.seek(rewind, TimeUnit.MILLISECONDS)
+            seek(SeekDirection.Backward)
         }
 
         binding.buttonForward.setOnClickListener {
-            var forward = player.position
-            forward += 1000
-
-            player.seek(forward, TimeUnit.MILLISECONDS)
+            seek(SeekDirection.Forward)
         }
 
         setupNotification()
         observeEvents()
+    }
+
+    private fun seek(direction: SeekDirection) {
+        val seekTime = when (direction) {
+            SeekDirection.Forward -> player.position + 1000
+            SeekDirection.Backward -> player.position - 1000L
+        }
+
+        player.seek(seekTime, TimeUnit.MILLISECONDS)
     }
 
     private fun observeEvents() {
@@ -114,6 +119,9 @@ class FirstFragment : Fragment() {
                             MediaSessionCallback.NEXT -> player.next()
                             MediaSessionCallback.PREVIOUS -> player.previous()
                             MediaSessionCallback.STOP -> player.stop()
+                            MediaSessionCallback.FORWARD -> seek(SeekDirection.Forward)
+                            MediaSessionCallback.REWIND -> seek(SeekDirection.Backward)
+                            is MediaSessionCallback.SEEK -> player.seek(it.positionMs, TimeUnit.MILLISECONDS)
                             else -> Timber.d("Event not handled")
                         }
                     }
