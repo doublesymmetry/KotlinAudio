@@ -86,8 +86,8 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         queue.add(mediaSource)
         exoPlayer.addMediaSource(mediaSource)
 
-        exoPlayer.prepare()
         exoPlayer.playWhenReady = playWhenReady
+        exoPlayer.prepare()
     }
 
     /**
@@ -100,8 +100,8 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         queue.addAll(mediaSources)
         exoPlayer.addMediaSources(mediaSources)
 
-        exoPlayer.prepare()
         exoPlayer.playWhenReady = playWhenReady
+        exoPlayer.prepare()
     }
 
     /**
@@ -188,6 +188,7 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
      */
     fun removeUpcomingItems() {
         val lastIndex = queue.lastIndex
+        if (lastIndex == -1) return
 
         exoPlayer.removeMediaItems(currentIndex, lastIndex)
         queue.subList(currentIndex, lastIndex).clear()

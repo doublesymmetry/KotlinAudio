@@ -43,6 +43,8 @@ import com.google.android.exoplayer2.upstream.cache.CacheDataSource
 import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor
 import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import com.google.android.exoplayer2.util.Util
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -52,6 +54,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     private val forwardingPlayer: ForwardingPlayer
 
     private var cache: SimpleCache? = null
+    private val scope = MainScope()
 
     val notificationManager: NotificationManager
 
@@ -59,6 +62,14 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     open val currentItem: AudioItem?
         get() = exoPlayer.currentMediaItem?.localConfiguration?.tag as AudioItem?
+
+    var playerState: AudioPlayerState = AudioPlayerState.IDLE
+        private set(value) {
+            if (value != field) {
+                field = value
+                playerEventHolder.updateAudioPlayerState(value)
+            }
+        }
 
     val duration: Long
         get() {
@@ -137,7 +148,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     init {
         if (cacheConfig != null) {
-            val cacheDir = File(context.cacheDir, "TrackPlayer")
+            val cacheDir = File(context.cacheDir, cacheConfig.identifier)
             val db: DatabaseProvider = StandaloneDatabaseProvider(context)
             cache = SimpleCache(cacheDir, LeastRecentlyUsedCacheEvictor(cacheConfig.maxCacheSize ?: 0), db)
         }
@@ -154,7 +165,10 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         notificationManager = NotificationManager(context, playerToUse, mediaSession.sessionToken, notificationEventHolder)
 
         exoPlayer.addListener(PlayerListener())
-        mediaSessionConnector.setPlayer(playerToUse)
+
+        scope.launch {
+            mediaSessionConnector.setPlayer(playerToUse)
+        }
     }
 
     private fun createForwardingPlayer(): ForwardingPlayer {
@@ -426,17 +440,21 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
-            when (playbackState) {
-                Player.STATE_BUFFERING -> playerEventHolder.updateAudioPlayerState(if (exoPlayer.playWhenReady) AudioPlayerState.BUFFERING else AudioPlayerState.LOADING)
+            playerState = when (playbackState) {
+                Player.STATE_BUFFERING -> if (exoPlayer.playWhenReady) AudioPlayerState.BUFFERING else AudioPlayerState.LOADING
                 Player.STATE_READY -> {
                     requestAudioFocus()
-                    playerEventHolder.updateAudioPlayerState(AudioPlayerState.READY)
+                    AudioPlayerState.READY
                 }
                 Player.STATE_IDLE -> {
                     abandonAudioFocusIfHeld()
-                    playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
+                    AudioPlayerState.IDLE
                 }
-                Player.STATE_ENDED -> playerEventHolder.updateAudioPlayerState(AudioPlayerState.ENDED)
+                Player.STATE_ENDED -> AudioPlayerState.ENDED
+                else -> {
+                    Timber.e("Unknown playback state: $playbackState")
+                    AudioPlayerState.IDLE
+                }
             }
         }
 
@@ -476,6 +494,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             // which sends a pause state after the STATE_ENDED - ignoring this case.
             if (exoPlayer.playbackState == Player.STATE_ENDED && !isPlaying) return
 
+            playerState = if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
             playerEventHolder.updateAudioPlayerState(
                 if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
             )
