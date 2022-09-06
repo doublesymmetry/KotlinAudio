@@ -14,4 +14,9 @@ data class PlayerConfig(
      * ```
      */
     var interceptPlayerActionsTriggeredExternally: Boolean = false
+
+    /**
+     * Toggle whether the player should pause automatically when audio is rerouted from a headset to device speakers.
+     */
+    val handleAudioBecomingNoisy: Boolean = true
 )

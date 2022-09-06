@@ -153,7 +153,8 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             cache = SimpleCache(cacheDir, LeastRecentlyUsedCacheEvictor(cacheConfig.maxCacheSize ?: 0), db)
         }
 
-        exoPlayer = ExoPlayer.Builder(context).setHandleAudioBecomingNoisy(true).apply {
+        val handleAudioBecomingNoisy = playerConfig != null && playerConfig.handleAudioBecomingNoisy == true
+        exoPlayer = ExoPlayer.Builder(context).setHandleAudioBecomingNoisy(handleAudioBecomingNoisy).apply {
             if (bufferConfig != null) setLoadControl(setupBuffer(bufferConfig))
         }.build()
         forwardingPlayer = createForwardingPlayer()
