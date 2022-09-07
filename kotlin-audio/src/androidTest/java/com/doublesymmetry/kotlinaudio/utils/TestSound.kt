@@ -1,6 +1,6 @@
 package com.doublesymmetry.kotlinaudio.utils
 
-import com.doublesymmetry.kotlinaudio.R
+import com.doublesymmetry.kotlinaudio.test.R
 import com.doublesymmetry.kotlinaudio.models.AudioItemOptions
 import com.doublesymmetry.kotlinaudio.models.DefaultAudioItem
 import com.doublesymmetry.kotlinaudio.models.MediaType
