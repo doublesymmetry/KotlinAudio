@@ -13,5 +13,10 @@ data class PlayerConfig(
      *  val player = QueuedAudioPlayer(requireActivity(), playerConfig = PlayerConfig(interceptPlayerActionsTriggeredExternally = true))
      * ```
      */
-    var interceptPlayerActionsTriggeredExternally: Boolean = false
+    var interceptPlayerActionsTriggeredExternally: Boolean = false,
+
+    /**
+     * Toggle whether the player should pause automatically when audio is rerouted from a headset to device speakers.
+     */
+    val handleAudioBecomingNoisy: Boolean = false
 )
