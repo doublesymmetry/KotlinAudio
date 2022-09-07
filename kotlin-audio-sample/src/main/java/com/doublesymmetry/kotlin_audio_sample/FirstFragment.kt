@@ -42,8 +42,8 @@ class FirstFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         player = QueuedAudioPlayer(requireActivity(), playerConfig = PlayerConfig(interceptPlayerActionsTriggeredExternally = true))
-        player.add(janelleSound)
-        player.add(lordeSound)
+        player.add(firstItem)
+        player.add(secondItem)
         player.play()
 
         binding.buttonNext.setOnClickListener {
@@ -151,23 +151,20 @@ class FirstFragment : Fragment() {
     }
 
     companion object {
-        private val janelleSound = DefaultAudioItem(
-            "rawresource:///${R.raw.kalimba}",
-            MediaType.DEFAULT,
-            title = "Dirty Computer",
+        val firstItem = DefaultAudioItem(
+            "https://cdn.pixabay.com/download/audio/2022/08/31/audio_419263fc12.mp3?filename=leonell-cassio-the-blackest-bouquet-118766.mp3", MediaType.DEFAULT,
+            title = "Song 1",
             artwork = "https://upload.wikimedia.org/wikipedia/en/0/0b/DirtyComputer.png",
-            artist = "Janelle Monáe",
-            options = AudioItemOptions(
-                resourceId = R.raw.kalimba
-            )
+            artist = "Artist 1",
+            duration = 221000
         )
 
-        private val lordeSound = DefaultAudioItem(
-            "https://file-examples-com.github.io/uploads/2017/11/file_example_MP3_1MG.mp3",
-            MediaType.DEFAULT,
-            title = "Melodrama",
+        val secondItem = DefaultAudioItem(
+            "https://cdn.pixabay.com/download/audio/2022/08/25/audio_4f3b0a816e.mp3?filename=tuesday-glitch-soft-hip-hop-118327.mp3", MediaType.DEFAULT,
+            title = "Song 2",
             artwork = "https://images-na.ssl-images-amazon.com/images/I/A18QUHExFgL._SL1500_.jpg",
-            artist = "Lorde"
+            artist = "Artist 2",
+            duration = 127000
         )
     }
 }
