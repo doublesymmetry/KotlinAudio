@@ -133,14 +133,12 @@ class FirstFragment : Fragment() {
     private fun setupNotification() {
         val notificationConfig = NotificationConfig(
             listOf(
-                NotificationButton.PLAY(),
-                NotificationButton.PAUSE(),
-                NotificationButton.NEXT(),
-                NotificationButton.PREVIOUS()
-            ),
-            null,
-            null,
-            null
+                NotificationButton.PLAY_PAUSE(),
+                NotificationButton.STOP(),
+                NotificationButton.NEXT(isCompact = true),
+                NotificationButton.PREVIOUS(isCompact = true),
+                NotificationButton.BACKWARD(isCompact = true)
+            ), null, null, null
         )
         player.notificationManager.createNotification(notificationConfig)
     }
