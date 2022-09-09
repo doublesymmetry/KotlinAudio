@@ -31,6 +31,15 @@ object TestSound {
         )
     )
 
+    /** Five seconds of silence 2. */
+    val fiveSeconds2 = DefaultAudioItem(
+        "rawresource:///${R.raw.five_seconds}", MediaType.DEFAULT,
+        title = "five seconds 2",
+        options = AudioItemOptions(
+            resourceId = R.raw.five_seconds
+        )
+    )
+
     /** A longer test case (track is around 6 minutes long). */
     val long = DefaultAudioItem(
         "rawresource:///${R.raw.kalimba}", MediaType.DEFAULT,

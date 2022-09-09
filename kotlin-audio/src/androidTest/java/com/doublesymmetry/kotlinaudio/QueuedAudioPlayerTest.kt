@@ -451,13 +451,13 @@ class QueuedAudioPlayerTest {
             @Test
             fun givenAddedTwoItemsAndCallingNext_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
                 testPlayer.play()
-                testPlayer.add(listOf(TestSound.long2, TestSound.long))
+                testPlayer.add(listOf(TestSound.fiveSeconds, TestSound.fiveSeconds2))
                 testPlayer.playerOptions.repeatMode = ALL
                 testPlayer.nextAndWaitForNextTrackTransition()
 
                 eventually {
                     assertTrue(testPlayer.nextItems.isEmpty())
-                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(TestSound.fiveSeconds2, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                 }
             }
