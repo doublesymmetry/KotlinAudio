@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
+import java.time.Duration
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AudioPlayerTest {
@@ -35,17 +36,13 @@ class AudioPlayerTest {
 
         @Test
         fun givenLoadSource_thenShouldBeLoading() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.load(TestSound.default)
             assertEquals(AudioPlayerState.LOADING, testPlayer.playerState)
         }
 
         @Test
         fun givenLoadSource_thenShouldBeReady() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = false)
+            testPlayer.load(TestSound.default)
             eventually {
                 assertEquals(AudioPlayerState.READY, testPlayer.playerState)
             }
@@ -53,19 +50,15 @@ class AudioPlayerTest {
 
         @Test
         fun givenLoadSourceAndPlayWhenReady_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = true)
-            eventually {
+            testPlayer.load(TestSound.fiveSeconds, true)
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-            }
+            })
         }
 
         @Test
         fun givenPlaySource_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = false)
+            testPlayer.load(TestSound.default)
 
             launchWithTimeoutSync(this) {
                 testPlayer.event.stateChange
@@ -80,9 +73,7 @@ class AudioPlayerTest {
 
         @Test
         fun givenPausingSource_thenShouldBePaused() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = true)
+            testPlayer.load(TestSound.fiveSeconds, playWhenReady = true)
 
             launchWithTimeoutSync(this) {
                 testPlayer.event.stateChange
@@ -90,16 +81,14 @@ class AudioPlayerTest {
                     .collect { testPlayer.pause() }
             }
 
-            eventually {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
-            }
+            })
         }
 
         @Test
         fun givenStoppingSource_thenShouldBeIdle() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = true)
+            testPlayer.load(TestSound.long, playWhenReady = true)
 
             var hasBeenPlaying = false
 
@@ -111,12 +100,9 @@ class AudioPlayerTest {
                         testPlayer.stop()
                     }
             }
-
             eventually {
                 assertEquals(true, hasBeenPlaying)
-                // TODO: We probably expect this to be IDLE
-//                assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
-                assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
+                assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
             }
         }
     }
@@ -149,9 +135,7 @@ class AudioPlayerTest {
 
         @Test
         fun givenPlayingSource_thenShouldBe1() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = true)
+            testPlayer.load(TestSound.fiveSeconds, playWhenReady = true)
 
             var hasMetSpeedExpectation = false
             launchWithTimeoutSync(this) {

@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 class QueuedAudioPlayerTest {
@@ -35,17 +36,17 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedOneItem_thenReturnNotNull() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
+            testPlayer.add(TestSound.default)
 
             assertNotNull(testPlayer.currentItem)
         }
 
         @Test
         fun givenAddedOneItemAndLoadingAnother_thenShouldHaveReplacedItem() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.load(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.load(TestSound.long)
 
-            assertEquals(TestSound.short.audioUrl, testPlayer.currentItem?.audioUrl)
+            assertEquals(TestSound.long.audioUrl, testPlayer.currentItem?.audioUrl)
         }
 
         @Test
@@ -53,9 +54,10 @@ class QueuedAudioPlayerTest {
             val appContext = InstrumentationRegistry.getInstrumentation().targetContext
             val audioPlayer = QueuedAudioPlayer(appContext)
 
-            audioPlayer.add(TestSound.default)
             audioPlayer.add(TestSound.short)
+            audioPlayer.add(TestSound.long)
             assertEquals(audioPlayer.currentItem?.audioUrl, audioPlayer.items[0].audioUrl)
+            assertEquals(audioPlayer.currentItem?.audioUrl, TestSound.short.audioUrl)
             audioPlayer.move(0, 1)
             assertEquals(audioPlayer.currentItem?.audioUrl, audioPlayer.items[1].audioUrl)
             assertNotEquals(audioPlayer.currentItem?.audioUrl, audioPlayer.items[0].audioUrl)
@@ -64,8 +66,8 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedMultipleItems_thenReturnNotNull() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
 
             assertNotNull(testPlayer.currentItem)
         }
@@ -80,16 +82,16 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedTwoItems_thenShouldContainOneItem() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
 
             assertEquals(1, testPlayer.nextItems.size)
         }
 
         @Test
         fun givenAddedTwoItemsAndCallingNext_thenShouldContainZeroItems() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.next()
 
             assertEquals(0, testPlayer.nextItems.size)
@@ -97,8 +99,8 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedTwoItemsAndCallingNextAndPrevious_thenShouldContainOneItem() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.next()
             testPlayer.previous()
 
@@ -107,8 +109,8 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedTwoItemsAndRemovingLastItem_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.remove(1)
 
             assertTrue(testPlayer.nextItems.isEmpty())
@@ -116,8 +118,8 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedTwoItemsAndJumpingToLast_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.jumpToItem(1)
 
             assertTrue(testPlayer.nextItems.isEmpty())
@@ -125,8 +127,8 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedTwoItemsAndRemovingUpcomingItems_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.removeUpcomingItems()
 
             assertTrue(testPlayer.nextItems.isEmpty())
@@ -134,15 +136,15 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun giveNoItems_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(emptyList(), playWhenReady = false)
+            testPlayer.add(emptyList())
             testPlayer.removeUpcomingItems()
             assertEquals(testPlayer.nextItems.size, 0)
         }
 
         @Test
         fun givenAddedTwoItemsAndStopping_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.stop()
 
             assertTrue(testPlayer.nextItems.isEmpty())
@@ -158,16 +160,16 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedTwoItems_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
 
             assertEquals(0, testPlayer.previousItems.size)
         }
 
         @Test
         fun givenAddedTwoItemsAndCallingNext_thenShouldHaveOneItem() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.next()
 
             assertEquals(1, testPlayer.previousItems.size)
@@ -175,8 +177,8 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedTwoItemsAndRemovedPreviousItems_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.next()
             testPlayer.removePreviousItems()
 
@@ -185,8 +187,8 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenAddedTwoItemsAndStopped_thenShouldBeEmpty() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.short, playWhenReady = false)
+            testPlayer.add(TestSound.short)
+            testPlayer.add(TestSound.long)
             testPlayer.stop()
 
             assertTrue(testPlayer.previousItems.isEmpty())
@@ -197,7 +199,8 @@ class QueuedAudioPlayerTest {
     inner class OnNext {
         @Test
         fun givenPlayerIsPlayingAndCallingNext_thenShouldGoToNextAndPlay() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(listOf(TestSound.default, TestSound.long))
+            testPlayer.play()
+            testPlayer.add(listOf(TestSound.short, TestSound.long))
             testPlayer.next()
 
             eventually {
@@ -210,13 +213,13 @@ class QueuedAudioPlayerTest {
 
         @Test
         fun givenPlayerIsPausedAndCallingNext_thenShouldGoToNextAndNotPlay() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(listOf(TestSound.default, TestSound.short), playWhenReady = false)
+            testPlayer.add(listOf(TestSound.short, TestSound.long))
             testPlayer.next()
 
             eventually {
                 assertEquals(1, testPlayer.previousItems.size)
                 assertEquals(0, testPlayer.nextItems.size)
-                assertEquals(TestSound.short, testPlayer.currentItem)
+                assertEquals(TestSound.long, testPlayer.currentItem)
                 assertEquals(AudioPlayerState.READY, testPlayer.playerState)
             }
         }
@@ -226,30 +229,35 @@ class QueuedAudioPlayerTest {
     inner class OnPrevious {
         @Test
         fun givenPlayerIsPlayingAndCallingPrevious_thenShouldGoToPreviousAndPlay() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(listOf(TestSound.long, TestSound.default), playWhenReady = false)
+            var first = TestSound.fiveSeconds
+            var second = TestSound.short
+            testPlayer.play()
+            testPlayer.add(listOf(first, second))
+            assertEquals(first, testPlayer.currentItem)
             testPlayer.next()
-            assertEquals(TestSound.default, testPlayer.currentItem)
+            assertEquals(second, testPlayer.currentItem)
             testPlayer.previous()
-
-            eventually {
-                assertEquals(0, testPlayer.previousItems.size)
-                assertEquals(1, testPlayer.nextItems.size)
-                assertEquals(TestSound.long, testPlayer.currentItem)
-                assertEquals(AudioPlayerState.READY, testPlayer.playerState)
-            }
+            assertEquals(first, testPlayer.currentItem)
+            testPlayer.seekAndWaitForNextTrackTransition(4.5.toLong(), TimeUnit.SECONDS)
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+                assertEquals(1, testPlayer.previousItems.size)
+                assertEquals(0, testPlayer.nextItems.size)
+                assertEquals(second, testPlayer.currentItem)
+                assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
+            })
         }
 
         @Test
         fun givenPlayerIsPausedAndCallingPrevious_thenShouldGoToPreviousAndNotPlay() = runBlocking(Dispatchers.Main) {
-            testPlayer.add(listOf(TestSound.default, TestSound.short), playWhenReady = false)
+            testPlayer.pause()
+            testPlayer.add(listOf(TestSound.short, TestSound.long))
             testPlayer.next()
-            assertEquals(TestSound.short, testPlayer.currentItem)
+            assertEquals(TestSound.long, testPlayer.currentItem)
             testPlayer.previous()
-
             eventually {
                 assertEquals(0, testPlayer.previousItems.size)
                 assertEquals(1, testPlayer.nextItems.size)
-                assertEquals(TestSound.default, testPlayer.currentItem)
+                assertEquals(testPlayer.currentItem, TestSound.short)
                 assertEquals(AudioPlayerState.READY, testPlayer.playerState)
             }
         }
@@ -261,20 +269,22 @@ class QueuedAudioPlayerTest {
         inner class Off {
             @Test
             fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeOff_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
-                testPlayer.add(listOf(TestSound.short, TestSound.long))
+                testPlayer.play()
+                testPlayer.add(listOf(TestSound.short, TestSound.fiveSeconds))
                 testPlayer.playerOptions.repeatMode = OFF
                 testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
 
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertTrue(testPlayer.nextItems.isEmpty())
-                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(TestSound.fiveSeconds, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                }
+                })
             }
 
             // TODO: Fix known bug from: https://github.com/doublesymmetry/react-native-track-player/pull/1501
             @Test
             fun givenAddedTwoItemsAndAllowingPlaybackToEndTwice_whenRepeatModeOff_thenShouldStopPlayback() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
                 testPlayer.add(listOf(TestSound.short, TestSound.short))
                 testPlayer.playerOptions.repeatMode = OFF
                 testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
@@ -289,6 +299,7 @@ class QueuedAudioPlayerTest {
 
             @Test
             fun givenAddedTwoItemsAndCallingNext_whenRepeatModeOff_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
                 testPlayer.playerOptions.repeatMode = OFF
                 testPlayer.nextAndWaitForNextTrackTransition()
@@ -302,20 +313,22 @@ class QueuedAudioPlayerTest {
 
             @Test
             fun givenAddedTwoItemsAndCallingNextTwice_thenShouldDoNothingOnSecondNext() = runBlocking(Dispatchers.Main) {
-                testPlayer.add(listOf(TestSound.short, TestSound.long))
+                testPlayer.play()
+                testPlayer.add(listOf(TestSound.short, TestSound.fiveSeconds))
                 testPlayer.playerOptions.repeatMode = OFF
                 testPlayer.nextAndWaitForNextTrackTransition()
                 testPlayer.next()
 
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertTrue(testPlayer.nextItems.isEmpty())
-                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(TestSound.fiveSeconds, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                }
+                })
             }
 
             @Test
             fun givenAddedOneItemAndAllowingPlaybackToEnd_thenShouldStopPlayback() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
                 testPlayer.add(TestSound.short)
                 testPlayer.playerOptions.repeatMode = OFF
                 testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
@@ -329,40 +342,117 @@ class QueuedAudioPlayerTest {
 
             @Test
             fun givenAddedOneItemAndCallingNext_thenShouldDoNothing() = runBlocking(Dispatchers.Main) {
-                testPlayer.add(TestSound.long)
+                testPlayer.add(TestSound.fiveSeconds, true)
                 testPlayer.playerOptions.repeatMode = OFF
                 testPlayer.nextAndWaitForNextTrackTransition()
 
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertTrue(testPlayer.nextItems.isEmpty())
-                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(TestSound.fiveSeconds, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                }
+                })
             }
         }
 
         @Nested
         inner class Track {
-            // TODO: Fix known bug from: https://github.com/doublesymmetry/react-native-track-player/pull/1501
-            // TODO: Bug - calling next when repeat mode is ONE does not do anything.
-//            @Test
-//            fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
-//                testPlayer.add(listOf(TestSound.long, TestSound.short))
-//                testPlayer.playerOptions.repeatMode = ONE
-//                testPlayer.seekAndWaitForNextTrackTransition(347.toLong(), TimeUnit.SECONDS)
-//
-//                eventually {
-//                    assertTrue(testPlayer.position < 300)
-//                    assertEquals(1, testPlayer.nextItems.size)
-//                    assertEquals(0, testPlayer.currentIndex)
-//                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-//                }
-//            }
+            @Test
+            fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.add(listOf(TestSound.fiveSeconds, TestSound.short))
+                testPlayer.playerOptions.repeatMode = ONE
+                testPlayer.seekAndWaitForNextTrackTransition(4.5.toLong(), TimeUnit.SECONDS)
+
+                eventually {
+                    assertTrue(testPlayer.position < 4500)
+                    assertEquals(1, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                }
+            }
 
             @Test
             fun givenAddedTwoItemsAndCallingNext_whenRepeatModeOne_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
                 testPlayer.playerOptions.repeatMode = ONE
+                testPlayer.nextAndWaitForNextTrackTransition()
+
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                })
+            }
+
+            @Test
+            fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.add(TestSound.fiveSeconds)
+                testPlayer.playerOptions.repeatMode = ONE
+                testPlayer.seekAndWaitForNextTrackTransition(4.5.toLong(), TimeUnit.SECONDS)
+                val currentPosition = testPlayer.position
+
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+                    assertTrue(testPlayer.position < currentPosition)
+                    assertEquals(0, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                })
+            }
+
+            @Test
+            fun givenAddedOneItemAndCallingNext_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.add(TestSound.fiveSeconds)
+                testPlayer.playerOptions.repeatMode = ONE
+                testPlayer.nextAndWaitForNextTrackTransition()
+
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+                    assertTrue(testPlayer.position > 0)
+                    assertEquals(0, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                })
+            }
+        }
+
+        @Nested
+        inner class Queue {
+            @Test
+            fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.add(listOf(TestSound.fiveSeconds, TestSound.long))
+                testPlayer.playerOptions.repeatMode = ALL
+                testPlayer.seekAndWaitForNextTrackTransition(4.5.toLong(), TimeUnit.SECONDS)
+
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+                    assertTrue(testPlayer.nextItems.isEmpty())
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                })
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndAllowingPlaybackToEndTwice_whenRepeatModeAll_thenShouldMoveToFirstTrackAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.add(listOf(TestSound.long, TestSound.fiveSeconds))
+                testPlayer.playerOptions.repeatMode = ALL
+                testPlayer.nextAndWaitForNextTrackTransition()
+                testPlayer.seekAndWaitForNextTrackTransition(4.5.toLong(), TimeUnit.SECONDS)
+
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                    assertEquals(1, testPlayer.nextItems.size)
+                    assertEquals(TestSound.long, testPlayer.currentItem)
+                })
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndCallingNext_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.add(listOf(TestSound.long2, TestSound.long))
+                testPlayer.playerOptions.repeatMode = ALL
                 testPlayer.nextAndWaitForNextTrackTransition()
 
                 eventually {
@@ -372,129 +462,50 @@ class QueuedAudioPlayerTest {
                 }
             }
 
-            // TODO: Fix known bug from: https://github.com/doublesymmetry/react-native-track-player/pull/1501
-            // TODO: Bug - calling next when repeat mode is ONE does not do anything.
-//            @Test
-//            fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
-//                testPlayer.add(TestSound.long)
-//                testPlayer.playerOptions.repeatMode = ONE
-//                val currentPosition = testPlayer.position
-//                testPlayer.seekAndWaitForNextTrackTransition(347.toLong(), TimeUnit.SECONDS)
-//
-//                eventually {
-//                    assertTrue(testPlayer.position < currentPosition)
-//                    assertEquals(0, testPlayer.nextItems.size)
-//                    assertEquals(0, testPlayer.currentIndex)
-//                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-//                }
-//            }
-
-            // TODO: Fix known bug from: https://github.com/doublesymmetry/react-native-track-player/pull/1501
-            // TODO: Bug - calling next when repeat mode is ONE does not do anything.
-//            @Test
-//            fun givenAddedOneItemAndCallingNext_whenRepeatModeOne_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
-//                testPlayer.add(TestSound.long)
-//                testPlayer.playerOptions.repeatMode = ONE
-//                val currentPosition = testPlayer.position
-//                testPlayer.nextAndWaitForNextTrackTransition()
-//
-//                eventually {
-//                    assertTrue(testPlayer.position < currentPosition)
-//                    assertEquals(0, testPlayer.nextItems.size)
-//                    assertEquals(0, testPlayer.currentIndex)
-//                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-//                }
-//            }
-        }
-
-        @Nested
-        inner class Queue {
-            // Fails on CI, but passes locally.
-//            @Test
-//            fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
-//                testPlayer.add(listOf(TestSound.short, TestSound.long))
-//                testPlayer.playerOptions.repeatMode = ALL
-//                testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
-//
-//                eventually {
-//                    assertTrue(testPlayer.nextItems.isEmpty())
-//                    assertEquals(TestSound.long, testPlayer.currentItem)
-//                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-//                }
-//            }
-
-            @Test
-            fun givenAddedTwoItemsAndAllowingPlaybackToEndTwice_whenRepeatModeAll_thenShouldMoveToFirstTrackAndPlay() = runBlocking(Dispatchers.Main) {
-                testPlayer.add(listOf(TestSound.long, TestSound.long2))
-                testPlayer.playerOptions.repeatMode = ALL
-                testPlayer.seekAndWaitForNextTrackTransition(347.toLong(), TimeUnit.SECONDS)
-                testPlayer.seekAndWaitForNextTrackTransition(142.toLong(), TimeUnit.SECONDS)
-
-                eventually {
-                    assertEquals(1, testPlayer.nextItems.size)
-                    assertEquals(TestSound.long, testPlayer.currentItem)
-                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                }
-            }
-
-            // Fails on CI, but passes locally.
-//            @Test
-//            fun givenAddedTwoItemsAndCallingNext_whenRepeatModeAll_thenShouldMoveToNextItemAndPlay() = runBlocking(Dispatchers.Main) {
-//                testPlayer.add(listOf(TestSound.short, TestSound.long))
-//                testPlayer.playerOptions.repeatMode = ALL
-//                testPlayer.nextAndWaitForNextTrackTransition()
-//
-//                eventually {
-//                    assertTrue(testPlayer.nextItems.isEmpty())
-//                    assertEquals(TestSound.long, testPlayer.currentItem)
-//                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-//                }
-//            }
-
             @Test
             fun givenAddedTwoItemsAndCallingNextTwice_whenRepeatModeAll_thenShouldMoveToFirstTrackAndPlay() = runBlocking(Dispatchers.Main) {
-                testPlayer.add(listOf(TestSound.long, TestSound.short))
+                testPlayer.play()
+                testPlayer.add(listOf(TestSound.fiveSeconds, TestSound.short))
                 testPlayer.playerOptions.repeatMode = ALL
                 testPlayer.nextAndWaitForNextTrackTransition()
                 testPlayer.nextAndWaitForNextTrackTransition()
 
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertEquals(1, testPlayer.nextItems.size)
-                    assertEquals(TestSound.long, testPlayer.currentItem)
+                    assertEquals(TestSound.fiveSeconds, testPlayer.currentItem)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                })
+            }
+
+            @Test
+            fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeAll_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.playerOptions.repeatMode = ALL
+                testPlayer.add(TestSound.fiveSeconds)
+                testPlayer.seekAndWaitForNextTrackTransition(4.5.toLong(), TimeUnit.SECONDS)
+
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+                    assertTrue(testPlayer.position < 4000 && testPlayer.position > 0)
+                    assertEquals(0, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                })
+            }
+
+            @Test
+            fun givenAddedOneItemAndCallingNext_whenRepeatModeAll_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.add(TestSound.fiveSeconds)
+                testPlayer.playerOptions.repeatMode = ALL
+                testPlayer.nextAndWaitForNextTrackTransition()
+
+                eventually {
+                    assertTrue(testPlayer.position > 0)
+                    assertEquals(0, testPlayer.nextItems.size)
+                    assertEquals(0, testPlayer.currentIndex)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                 }
             }
-
-            // Fails on CI, but passes locally.
-//            @Test
-//            fun givenAddedOneItemAndAllowingPlaybackToEnd_whenRepeatModeAll_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
-//                testPlayer.add(TestSound.long)
-//                testPlayer.playerOptions.repeatMode = ALL
-//                testPlayer.seekAndWaitForNextTrackTransition(347.toLong(), TimeUnit.SECONDS)
-//
-//                eventually {
-//                    assertTrue(testPlayer.position < 300)
-//                    assertEquals(0, testPlayer.nextItems.size)
-//                    assertEquals(0, testPlayer.currentIndex)
-//                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-//                }
-//            }
-
-            // TODO: Fix known bug from: https://github.com/doublesymmetry/react-native-track-player/pull/1501
-//            @Test
-//            fun givenAddedOneItemAndCallingNext_whenRepeatModeAll_thenShouldRestartCurrentItem() = runBlocking(Dispatchers.Main) {
-//                testPlayer.add(TestSound.long)
-//                testPlayer.playerOptions.repeatMode = ALL
-//                val lastPositon = testPlayer.position
-//                testPlayer.nextAndWaitForNextTrackTransition()
-//
-//                eventually {
-//                    assertTrue(testPlayer.position < lastPositon)
-//                    assertEquals(0, testPlayer.nextItems.size)
-//                    assertEquals(0, testPlayer.currentIndex)
-//                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-//                }
-//            }
         }
     }
 }
