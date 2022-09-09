@@ -20,40 +20,40 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
     }
 
     val currentIndex
-        get() = exoPlayer.currentWindowIndex
+        get() = exoPlayer.currentMediaItemIndex
 
     override val currentItem: AudioItem?
-        get() = queue.getOrNull(currentIndex)?.mediaItem?.playbackProperties?.tag as AudioItem?
+        get() = queue.getOrNull(currentIndex)?.mediaItem?.localConfiguration?.tag as AudioItem?
 
     val nextIndex: Int?
         get() {
-            return if (exoPlayer.nextWindowIndex == C.INDEX_UNSET) null
-            else exoPlayer.nextWindowIndex
+            return if (exoPlayer.nextMediaItemIndex == C.INDEX_UNSET) null
+            else exoPlayer.nextMediaItemIndex
         }
 
     val previousIndex: Int?
         get() {
-            return if (exoPlayer.previousWindowIndex == C.INDEX_UNSET) null
-            else exoPlayer.previousWindowIndex
+            return if (exoPlayer.previousMediaItemIndex == C.INDEX_UNSET) null
+            else exoPlayer.previousMediaItemIndex
         }
 
     val items: List<AudioItem>
-        get() = queue.map { it.mediaItem.playbackProperties?.tag as AudioItem }
+        get() = queue.map { it.mediaItem.localConfiguration?.tag as AudioItem }
 
     val previousItems: List<AudioItem>
         get() {
             return if (queue.isEmpty()) emptyList()
             else queue
-                .subList(0, exoPlayer.currentWindowIndex)
-                .map { it.mediaItem.playbackProperties?.tag as AudioItem }
+                .subList(0, exoPlayer.currentMediaItemIndex)
+                .map { it.mediaItem.localConfiguration?.tag as AudioItem }
         }
 
     val nextItems: List<AudioItem>
         get() {
             return if (queue.isEmpty()) emptyList()
             else queue
-                .subList(exoPlayer.currentWindowIndex, queue.lastIndex)
-                .map { it.mediaItem.playbackProperties?.tag as AudioItem }
+                .subList(exoPlayer.currentMediaItemIndex, queue.lastIndex)
+                .map { it.mediaItem.localConfiguration?.tag as AudioItem }
         }
 
     val nextItem: AudioItem?
