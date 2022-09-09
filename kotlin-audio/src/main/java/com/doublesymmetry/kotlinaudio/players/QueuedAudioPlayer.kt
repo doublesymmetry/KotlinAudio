@@ -63,14 +63,16 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         get() = items.getOrNull(currentIndex - 1)
 
     override fun load(item: AudioItem, playWhenReady: Boolean) {
-        val currentIndex = exoPlayer.currentWindowIndex
+        exoPlayer.playWhenReady = playWhenReady
+        load(item)
+    }
+
+    override fun load(item: AudioItem) {
         val mediaSource = getMediaSourceFromAudioItem(item)
 
         queue[currentIndex] = mediaSource
         exoPlayer.removeMediaItem(currentIndex)
         exoPlayer.addMediaSource(currentIndex, mediaSource)
-
-        exoPlayer.playWhenReady = playWhenReady
         exoPlayer.prepare()
 
         previous()
@@ -79,30 +81,45 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
     /**
      * Add a single item to the queue. If the AudioPlayer has no item loaded, it will load the `item`.
      * @param item The [AudioItem] to add.
-     * @param playWhenReady If this is `true` it will automatically start playback. Default is `true`.
      */
-    fun add(item: AudioItem, playWhenReady: Boolean = true) {
+    fun add(item: AudioItem, playWhenReady: Boolean) {
+        exoPlayer.playWhenReady = playWhenReady
+        add(item)
+    }
+
+    /**
+     * Add a single item to the queue. If the AudioPlayer has no item loaded, it will load the `item`.
+     * @param item The [AudioItem] to add.
+     * @param playWhenReady Whether playback starts automatically.
+     */
+    fun add(item: AudioItem) {
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue.add(mediaSource)
         exoPlayer.addMediaSource(mediaSource)
-
-        exoPlayer.playWhenReady = playWhenReady
         exoPlayer.prepare()
     }
 
     /**
      * Add multiple items to the queue. If the AudioPlayer has no item loaded, it will load the first item in the list.
      * @param items The [AudioItem]s to add.
-     * @param playWhenReady If this is `true` it will automatically start playback. Default is `true`.
+     * @param playWhenReady Whether playback starts automatically.
      */
-    fun add(items: List<AudioItem>, playWhenReady: Boolean = true) {
+    fun add(items: List<AudioItem>, playWhenReady: Boolean) {
+        exoPlayer.playWhenReady = playWhenReady
+        add(items)
+    }
+
+    /**
+     * Add multiple items to the queue. If the AudioPlayer has no item loaded, it will load the first item in the list.
+     * @param items The [AudioItem]s to add.
+     */
+    fun add(items: List<AudioItem>) {
         val mediaSources = items.map { getMediaSourceFromAudioItem(it) }
         queue.addAll(mediaSources)
         exoPlayer.addMediaSources(mediaSources)
-
-        exoPlayer.playWhenReady = playWhenReady
         exoPlayer.prepare()
     }
+
 
     /**
      * Add multiple items to the queue.
@@ -113,7 +130,6 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         val mediaSources = items.map { getMediaSourceFromAudioItem(it) }
         queue.addAll(atIndex, mediaSources)
         exoPlayer.addMediaSources(atIndex, mediaSources)
-
         exoPlayer.prepare()
     }
 
@@ -161,9 +177,19 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
 
     /**
      * Jump to an item in the queue.
+     * @param index the index to jump to
+     * @param playWhenReady Whether playback starts automatically.
      */
-    fun jumpToItem(index: Int, playWhenReady: Boolean = true) {
+    fun jumpToItem(index: Int, playWhenReady: Boolean) {
         exoPlayer.playWhenReady = playWhenReady
+        jumpToItem(index)
+    }
+
+    /**
+     * Jump to an item in the queue.
+     * @param index the index to jump to
+     */
+    fun jumpToItem(index: Int) {
         try {
             exoPlayer.seekTo(index, C.INDEX_UNSET.toLong())
         } catch (e: IllegalSeekPositionException) {
@@ -220,4 +246,3 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         }
     }
 }
-

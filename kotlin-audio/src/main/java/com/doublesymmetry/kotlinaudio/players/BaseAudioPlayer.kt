@@ -228,12 +228,20 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     /**
      * Will replace the current item with a new one and load it into the player.
      * @param item The [AudioItem] to replace the current one.
-     * @param playWhenReady If this is `true` it will automatically start playback. Default is `true`.
+     * @param playWhenReady Whether playback starts automatically.
      */
     open fun load(item: AudioItem, playWhenReady: Boolean = true) {
+        exoPlayer.playWhenReady = playWhenReady
+        load(item)
+    }
+
+    /**
+     * Will replace the current item with a new one and load it into the player.
+     * @param item The [AudioItem] to replace the current one.
+     */
+    open fun load(item: AudioItem) {
         val mediaSource = getMediaSourceFromAudioItem(item)
         exoPlayer.addMediaSource(mediaSource)
-        exoPlayer.playWhenReady = playWhenReady
         exoPlayer.prepare()
     }
 
