@@ -172,6 +172,9 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
      * @param toIndex The index to move the item to. If the index is larger than the size of the queue, the item is moved to the end of the queue instead.
      */
     fun move(fromIndex: Int, toIndex: Int) {
+        var item = queue[fromIndex]
+        queue.removeAt(fromIndex)
+        queue.add(if (toIndex > fromIndex) toIndex else toIndex - 1, item)
         exoPlayer.moveMediaItem(fromIndex, toIndex)
     }
 

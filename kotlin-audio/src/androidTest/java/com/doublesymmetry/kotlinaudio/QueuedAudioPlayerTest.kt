@@ -49,6 +49,20 @@ class QueuedAudioPlayerTest {
         }
 
         @Test
+        fun givenAddedTwoItemAndMovingFirstAboveSecond_thenShouldHaveMovedItem() = runBlocking(Dispatchers.Main) {
+            val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+            val audioPlayer = QueuedAudioPlayer(appContext)
+
+            audioPlayer.add(TestSound.default)
+            audioPlayer.add(TestSound.short)
+            assertEquals(audioPlayer.currentItem?.audioUrl, audioPlayer.items[0].audioUrl)
+            audioPlayer.move(0, 1)
+            assertEquals(audioPlayer.currentItem?.audioUrl, audioPlayer.items[1].audioUrl)
+            assertNotEquals(audioPlayer.currentItem?.audioUrl, audioPlayer.items[0].audioUrl)
+        }
+
+
+        @Test
         fun givenAddedMultipleItems_thenReturnNotNull() = runBlocking(Dispatchers.Main) {
             testPlayer.add(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.short, playWhenReady = false)
