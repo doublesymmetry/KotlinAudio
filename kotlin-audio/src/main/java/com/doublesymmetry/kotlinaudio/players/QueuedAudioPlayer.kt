@@ -69,12 +69,14 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
 
     override fun load(item: AudioItem) {
         val mediaSource = getMediaSourceFromAudioItem(item)
-
-        queue[currentIndex] = mediaSource
-        exoPlayer.removeMediaItem(currentIndex)
+        if (queue.isEmpty()) {
+            queue.add(mediaSource)
+        } else {
+            queue[currentIndex] = mediaSource
+            exoPlayer.removeMediaItem(currentIndex)
+        }
         exoPlayer.addMediaSource(currentIndex, mediaSource)
         exoPlayer.prepare()
-
         previous()
     }
 
