@@ -5,7 +5,7 @@ plugins {
     id 'de.mannodermaus.android-junit5'
 }
 
-def versionNumber = '1.2.2'
+def versionNumber = '1.2.4'
 
 group = 'com.github.doublesymmetry'
 version = versionNumber
