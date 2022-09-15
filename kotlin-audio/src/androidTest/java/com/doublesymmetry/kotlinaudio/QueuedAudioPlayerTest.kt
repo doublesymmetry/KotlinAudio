@@ -415,6 +415,44 @@ class QueuedAudioPlayerTest {
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                 })
             }
+
+            @Test
+            fun givenLoadedItemWithPlayWhenReady_thenThePlayerShouldStartPlaying() = runBlocking(Dispatchers.Main) {
+                testPlayer.play()
+                testPlayer.load(TestSound.fiveSeconds)
+                eventually {
+                    assertEquals(testPlayer.playerState, AudioPlayerState.PLAYING)
+                }
+            }
+
+
+            @Test
+            fun givenLoadedItemWithoutAdding_thenItShouldAddAsFirst() = runBlocking(Dispatchers.Main) {
+                testPlayer.load(TestSound.long)
+                assertEquals(TestSound.long.audioUrl, testPlayer.currentItem?.audioUrl)
+                assertEquals(testPlayer.currentIndex, 0)
+                assertEquals(testPlayer.items.size, 1)
+            }
+
+            @Test
+            fun givenAddedOneItemAndLoadingAnother_thenShouldHaveReplacedItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(TestSound.short)
+                testPlayer.load(TestSound.long)
+
+                assertEquals(TestSound.long.audioUrl, testPlayer.currentItem?.audioUrl)
+            }
+
+            @Test
+            fun givenAddedTwoItemsAndJumpingToTheSecondLoadingAnother_thenShouldHaveReplacedSecondItem() = runBlocking(Dispatchers.Main) {
+                testPlayer.add(TestSound.short)
+                testPlayer.add(TestSound.fiveSeconds)
+                testPlayer.jumpToItem(1)
+                testPlayer.load(TestSound.long)
+
+                assertEquals(testPlayer.currentItem?.audioUrl, TestSound.long.audioUrl)
+                assertEquals(testPlayer.items[1].audioUrl, TestSound.long.audioUrl)
+                assertEquals(testPlayer.currentIndex, 1)
+            }
         }
 
         @Nested

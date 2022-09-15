@@ -77,7 +77,6 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         }
         exoPlayer.addMediaSource(currentIndex, mediaSource)
         exoPlayer.prepare()
-        previous()
     }
 
     /**
