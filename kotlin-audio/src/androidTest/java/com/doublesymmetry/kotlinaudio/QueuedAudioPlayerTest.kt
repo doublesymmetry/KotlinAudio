@@ -506,6 +506,22 @@ class QueuedAudioPlayerTest {
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                 }
             }
+
+        }
+    }
+
+    @Nested
+    inner class QueueManipulations {
+        @Nested
+        inner class Remove {
+            @Test
+            fun givenAddedThreeItemsAnDeletingWithIndexesInNonDescendingOrder_thenShouldDeleteCorrectItems() =
+                runBlocking(Dispatchers.Main) {
+                    testPlayer.add(listOf(TestSound.short, TestSound.fiveSeconds, TestSound.fiveSeconds2))
+                    testPlayer.remove(listOf(0, 1))
+                    assertEquals(testPlayer.items.size, 1)
+                    assertEquals(testPlayer.items[0], TestSound.fiveSeconds2)
+                }
         }
     }
 }
