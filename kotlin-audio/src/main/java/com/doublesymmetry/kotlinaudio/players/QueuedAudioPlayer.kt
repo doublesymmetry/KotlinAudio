@@ -10,6 +10,8 @@ import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.source.MediaSource
 import java.util.*
+import kotlin.math.max
+import kotlin.math.min
 
 class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerConfig(), bufferConfig: BufferConfig? = null, cacheConfig: CacheConfig? = null) : BaseAudioPlayer(context, playerConfig, bufferConfig, cacheConfig) {
     private val queue = LinkedList<MediaSource>()
@@ -177,10 +179,10 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
      * @param toIndex The index to move the item to. If the index is larger than the size of the queue, the item is moved to the end of the queue instead.
      */
     fun move(fromIndex: Int, toIndex: Int) {
+        exoPlayer.moveMediaItem(fromIndex, toIndex)
         var item = queue[fromIndex]
         queue.removeAt(fromIndex)
-        queue.add(if (toIndex > fromIndex) toIndex else toIndex - 1, item)
-        exoPlayer.moveMediaItem(fromIndex, toIndex)
+        queue.add(max(0, min(items.size, if (toIndex > fromIndex) toIndex else toIndex - 1)), item)
     }
 
     /**
