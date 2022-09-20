@@ -17,6 +17,13 @@ class PlayerEventHolder {
     private var _playbackEnd = MutableSharedFlow<PlaybackEndedReason?>(1)
     var playbackEnd = _playbackEnd.asSharedFlow()
 
+    private var _playWhenReadyChange = MutableSharedFlow<PlayWhenReadyChangeData>(1)
+    /**
+     * Use these events to track when [com.doublesymmetry.kotlinaudio.players.BaseAudioPlayer.playWhenReady]
+     * changes.
+     */
+    var playWhenReadyChange = _playWhenReadyChange.asSharedFlow()
+
     private var _audioItemTransition = MutableSharedFlow<AudioItemTransitionReason?>(1)
 
     /**
@@ -43,7 +50,7 @@ class PlayerEventHolder {
      * The sources can be: media buttons on headphones, Android Wear, Android Auto, Google Assistant, media notification, etc.
      *
      * For this observable to send events, set [interceptPlayerActionsTriggeredExternally][com.doublesymmetry.kotlinaudio.models.PlayerConfig.interceptPlayerActionsTriggeredExternally] to true.
-     */
+    */
     var onPlayerActionTriggeredExternally = _onPlayerActionTriggeredExternally.asSharedFlow()
 
     internal fun updateAudioPlayerState(state: AudioPlayerState) {
@@ -55,6 +62,12 @@ class PlayerEventHolder {
     internal fun updatePlaybackEndedReason(reason: PlaybackEndedReason) {
         coroutineScope.launch {
             _playbackEnd.emit(reason)
+        }
+    }
+
+    internal fun updatePlayWhenReadyChange(playWhenReadyChange: PlayWhenReadyChangeData) {
+        coroutineScope.launch {
+            _playWhenReadyChange.emit(playWhenReadyChange)
         }
     }
 

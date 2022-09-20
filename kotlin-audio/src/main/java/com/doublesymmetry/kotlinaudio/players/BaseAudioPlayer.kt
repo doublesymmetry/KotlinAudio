@@ -71,6 +71,12 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             }
         }
 
+    var playWhenReady: Boolean
+        get() = exoPlayer.playWhenReady
+        set(value) {
+            exoPlayer.playWhenReady = value
+        }
+
     val duration: Long
         get() {
             return if (exoPlayer.duration == C.TIME_UNSET) 0
@@ -443,6 +449,9 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     }
 
     inner class PlayerListener : Listener {
+        /**
+         * Called when there is metadata associated with the current playback time.
+         */
         override fun onMetadata(metadata: Metadata) {
             PlaybackMetadata.fromId3Metadata(metadata)?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
             PlaybackMetadata.fromIcy(metadata)?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
@@ -450,6 +459,16 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             PlaybackMetadata.fromQuickTime(metadata)?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
         }
 
+        /**
+         * Called when the value returned from Player.getPlayWhenReady() changes.
+         */
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            playerEventHolder.updatePlayWhenReadyChange(PlayWhenReadyChangeData(playWhenReady))
+        }
+
+        /**
+         * Called when the value returned from Player.getPlaybackState() changes.
+         */
         override fun onPlaybackStateChanged(playbackState: Int) {
             playerState = when (playbackState) {
                 Player.STATE_BUFFERING -> if (exoPlayer.playWhenReady) AudioPlayerState.BUFFERING else AudioPlayerState.LOADING
@@ -469,6 +488,11 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             }
         }
 
+        /**
+         * A position discontinuity occurs when the playing period changes, the playback position
+         * jumps within the period currently being played, or when the playing period has been
+         * skipped or removed.
+         */
         override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
             this@BaseAudioPlayer.oldPosition = oldPosition.positionMs
 
@@ -482,6 +506,11 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             }
         }
 
+        /**
+         * Called when playback transitions to a media item or starts repeating a media item
+         * according to the current repeat mode. Note that this callback is also called when the
+         * playlist becomes non-empty or empty as a consequence of a playlist change.
+         */
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             when (reason) {
                 Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.AUTO(oldPosition))
@@ -500,6 +529,9 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             }
         }
 
+        /**
+         * Called when the value of Player.isPlaying() changes.
+         */
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             // Unless ExoPlayer is in STATE_READY then it is either idle, buffering or the media has ended
             // Without this check these other state will be immediately overridden by PLAYING/PAUSED
