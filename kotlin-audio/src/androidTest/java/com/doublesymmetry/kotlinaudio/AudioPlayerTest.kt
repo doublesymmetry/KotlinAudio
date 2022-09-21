@@ -17,6 +17,7 @@ import java.time.Duration
 @OptIn(ExperimentalCoroutinesApi::class)
 class AudioPlayerTest {
     private lateinit var testPlayer: QueuedAudioPlayer
+    private lateinit var states: MutableList<String>
 
     @BeforeEach
     fun setUp(testInfo: TestInfo) {
@@ -25,6 +26,17 @@ class AudioPlayerTest {
             appContext,
             cacheConfig = CacheConfig(maxCacheSize = (1024 * 50).toLong(), identifier = testInfo.displayName)
         )
+        states = mutableListOf()
+        testPlayer.event.stateChange.map {
+            if (it != AudioPlayerState.BUFFERING) {
+                states.add(it.toString())
+            }
+        }.stateIn(
+            CoroutineScope(Dispatchers.Default),
+            SharingStarted.Eagerly,
+            emptyList<AudioPlayerState>()
+        )
+        testPlayer.event.stateChange.waitUntil { it == AudioPlayerState.IDLE }
     }
 
     @Nested
@@ -35,39 +47,28 @@ class AudioPlayerTest {
         }
 
         @Test
-        fun givenLoadSource_thenShouldBeLoading() = runBlocking(Dispatchers.Main) {
-            testPlayer.load(TestSound.default)
-            assertEquals(AudioPlayerState.LOADING, testPlayer.playerState)
-        }
-
-        @Test
         fun givenLoadSource_thenShouldBeReady() = runBlocking(Dispatchers.Main) {
             testPlayer.load(TestSound.default)
             eventually {
-                assertEquals(AudioPlayerState.READY, testPlayer.playerState)
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY"), states);
             }
         }
 
         @Test
         fun givenLoadSourceAndPlayWhenReady_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
             testPlayer.load(TestSound.fiveSeconds, true)
-            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING"), states);
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
             })
         }
 
         @Test
         fun givenPlaySource_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
+            testPlayer.play()
             testPlayer.load(TestSound.default)
-
-            launchWithTimeoutSync(this) {
-                testPlayer.event.stateChange
-                    .waitUntil { it == AudioPlayerState.READY }
-                    .collect { testPlayer.play() }
-            }
-
             eventually {
-                assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING"), states.subList(0, 4));
             }
         }
 
@@ -81,7 +82,8 @@ class AudioPlayerTest {
                     .collect { testPlayer.pause() }
             }
 
-            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "PAUSED"), states);
                 assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
             })
         }
@@ -101,6 +103,7 @@ class AudioPlayerTest {
                     }
             }
             eventually {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "IDLE"), states);
                 assertEquals(true, hasBeenPlaying)
                 assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
             }

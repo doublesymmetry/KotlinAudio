@@ -11,8 +11,8 @@ import kotlinx.coroutines.launch
 class PlayerEventHolder {
     private val coroutineScope = MainScope()
 
-    private var _stateChange = MutableStateFlow(AudioPlayerState.IDLE)
-    var stateChange = _stateChange.asStateFlow()
+    private var _stateChange = MutableSharedFlow<AudioPlayerState>(1)
+    var stateChange = _stateChange.asSharedFlow()
 
     private var _playbackEnd = MutableSharedFlow<PlaybackEndedReason?>(1)
     var playbackEnd = _playbackEnd.asSharedFlow()
