@@ -631,9 +631,7 @@ abstract class BaseAudioPlayer internal constructor(
                         }
                     }
                     Player.EVENT_MEDIA_ITEM_TRANSITION -> {
-                        if (playerState == AudioPlayerState.IDLE) {
-                            playerState = AudioPlayerState.LOADING
-                        }
+                        playerState = AudioPlayerState.LOADING
                     }
                     Player.EVENT_PLAY_WHEN_READY_CHANGED -> {
                         if (!player.playWhenReady) {
