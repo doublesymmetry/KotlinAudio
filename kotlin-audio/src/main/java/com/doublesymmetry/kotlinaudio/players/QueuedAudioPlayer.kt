@@ -164,6 +164,7 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
      */
     fun next() {
         exoPlayer.seekToNext()
+        exoPlayer.prepare()
     }
 
     /**
@@ -171,6 +172,7 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
      */
     fun previous() {
         exoPlayer.seekToPrevious()
+        exoPlayer.prepare()
     }
 
     /**
@@ -202,6 +204,7 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
     fun jumpToItem(index: Int) {
         try {
             exoPlayer.seekTo(index, C.INDEX_UNSET.toLong())
+            exoPlayer.prepare()
         } catch (e: IllegalSeekPositionException) {
             throw Error("This item index $index does not exist. The size of the queue is ${queue.size} items.")
         }
