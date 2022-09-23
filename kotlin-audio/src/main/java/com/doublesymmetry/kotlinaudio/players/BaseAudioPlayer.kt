@@ -44,9 +44,11 @@ import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvicto
 import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.File
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 abstract class BaseAudioPlayer internal constructor(
@@ -67,6 +69,8 @@ abstract class BaseAudioPlayer internal constructor(
 
     open val currentItem: AudioItem?
         get() = exoPlayer.currentMediaItem?.localConfiguration?.tag as AudioItem?
+
+    var state: AudioPlayerState? = null
 
     var playerState: AudioPlayerState = AudioPlayerState.IDLE
         private set(value) {
@@ -214,6 +218,11 @@ abstract class BaseAudioPlayer internal constructor(
 
         scope.launch {
             mediaSessionConnector.setPlayer(playerToUse)
+        }
+        scope.launch {
+            playerEventHolder.stateChange.collect{
+                state = it
+            }
         }
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
