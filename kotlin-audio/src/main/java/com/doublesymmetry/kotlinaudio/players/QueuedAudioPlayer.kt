@@ -179,8 +179,14 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue[index] = mediaSource
 
-        if (currentIndex == index && automaticallyUpdateNotificationMetadata)
-            notificationManager.notificationMetadata = NotificationMetadata(item.title, item.artist, item.artwork)
+        if (currentIndex == index && automaticallyUpdateNotificationMetadata) {
+            notificationManager.notificationMetadata =
+                NotificationMetadata(item.title, item.artist, item.artwork)
+
+            mediaSessionConnector.setMediaMetadataProvider {
+                mediaSource.getMediaMetadataCompat()
+            }
+        }
     }
 
     /**
