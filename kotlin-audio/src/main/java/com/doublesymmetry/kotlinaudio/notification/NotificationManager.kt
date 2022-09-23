@@ -27,7 +27,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             reload()
         }
 
-    var showPlayPauseButton = true
+    var showPlayPauseButton = false
         set(value) {
             scope.launch {
                 field = value
@@ -35,7 +35,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }
 
-    var showStopButton = true
+    var showStopButton = false
         set(value) {
             scope.launch {
                 field = value
@@ -43,7 +43,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }
 
-    var showForwardButton = true
+    var showForwardButton = false
         set(value) {
             scope.launch {
                 field = value
@@ -54,7 +54,7 @@ class NotificationManager internal constructor(private val context: Context, pri
     /**
      * Controls whether or not this button should appear when the notification is compact (collapsed).
      */
-    var showForwardButtonCompact = true
+    var showForwardButtonCompact = false
         set(value) {
             scope.launch {
                 field = value
@@ -62,7 +62,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }
 
-    var showRewindButton = true
+    var showRewindButton = false
         set(value) {
             scope.launch {
                 field = value
@@ -73,7 +73,7 @@ class NotificationManager internal constructor(private val context: Context, pri
     /**
      * Controls whether or not this button should appear when the notification is compact (collapsed).
      */
-    var showRewindButtonCompact = true
+    var showRewindButtonCompact = false
         set(value) {
             scope.launch {
                 field = value
@@ -81,7 +81,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }
 
-    var showNextButton = true
+    var showNextButton = false
         set(value) {
             scope.launch {
                 field = value
@@ -92,7 +92,7 @@ class NotificationManager internal constructor(private val context: Context, pri
     /**
      * Controls whether or not this button should appear when the notification is compact (collapsed).
      */
-    var showNextButtonCompact = true
+    var showNextButtonCompact = false
         set(value) {
             scope.launch {
                 field = value
@@ -100,7 +100,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             }
         }
 
-    var showPreviousButton = true
+    var showPreviousButton = false
         set(value) {
             scope.launch {
                 field = value
@@ -111,7 +111,7 @@ class NotificationManager internal constructor(private val context: Context, pri
     /**
      * Controls whether or not this button should appear when the notification is compact (collapsed).
      */
-    var showPreviousButtonCompact = true
+    var showPreviousButtonCompact = false
         set(value) {
             scope.launch {
                 field = value
@@ -153,11 +153,15 @@ class NotificationManager internal constructor(private val context: Context, pri
             setMediaDescriptionAdapter(descriptionAdapter)
             setNotificationListener(this@NotificationManager)
 
+            hideAllButtonsByDefault()
+
             if (buttons.isNotEmpty()) {
                 config.buttons.forEach { button ->
                     when (button) {
-                        is NotificationButton.PLAY -> button.icon?.let { setPlayActionIconResourceId(it) }
-                        is NotificationButton.PAUSE -> button.icon?.let { setPauseActionIconResourceId(it) }
+                        is NotificationButton.PLAY_PAUSE -> {
+                            button.playIcon?.let { setPlayActionIconResourceId(it) }
+                            button.pauseIcon?.let { setPauseActionIconResourceId(it) }
+                        }
                         is NotificationButton.STOP -> button.icon?.let { setStopActionIconResourceId(it) }
                         is NotificationButton.FORWARD -> button.icon?.let { setFastForwardActionIconResourceId(it) }
                         is NotificationButton.BACKWARD -> button.icon?.let { setRewindActionIconResourceId(it) }
@@ -173,7 +177,7 @@ class NotificationManager internal constructor(private val context: Context, pri
             config.smallIcon?.let { setSmallIcon(it) }
             config.buttons.forEach { button ->
                 when (button) {
-                    is NotificationButton.PLAY, is NotificationButton.PAUSE -> {
+                    is NotificationButton.PLAY_PAUSE -> {
                         showPlayPauseButton = true
                     }
                     is NotificationButton.STOP -> {
@@ -226,6 +230,17 @@ class NotificationManager internal constructor(private val context: Context, pri
 
     private fun reload() = scope.launch {
         internalNotificationManager?.invalidate()
+    }
+
+    private fun hideAllButtonsByDefault() {
+        internalNotificationManager.apply {
+            showPlayPauseButton = false
+            showForwardButton = false
+            showRewindButton = false
+            showNextButton = false
+            showPreviousButton = false
+            showStopButton = false
+        }
     }
 
     companion object {
