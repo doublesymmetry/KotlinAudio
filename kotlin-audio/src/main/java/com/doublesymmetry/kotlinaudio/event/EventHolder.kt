@@ -24,4 +24,7 @@ class EventHolder internal constructor(private val notificationEventHolder: Noti
 
     val stateChange
         get() = playerEventHolder.stateChange
+
+    val playbackError
+        get() = playerEventHolder.playbackError
 }

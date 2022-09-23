@@ -17,6 +17,9 @@ class PlayerEventHolder {
     private var _playbackEnd = MutableSharedFlow<PlaybackEndedReason?>(1)
     var playbackEnd = _playbackEnd.asSharedFlow()
 
+    private var _playbackError = MutableSharedFlow<PlaybackError?>(1)
+    var playbackError = _playbackError.asSharedFlow()
+
     private var _playWhenReadyChange = MutableSharedFlow<PlayWhenReadyChangeData>(1)
     /**
      * Use these events to track when [com.doublesymmetry.kotlinaudio.players.BaseAudioPlayer.playWhenReady]
@@ -92,6 +95,12 @@ class PlayerEventHolder {
     internal fun updateOnPlaybackMetadata(metadata: PlaybackMetadata) {
         coroutineScope.launch {
             _onPlaybackMetadata.emit(metadata)
+        }
+    }
+
+    internal fun updatePlaybackError(error: PlaybackError) {
+        coroutineScope.launch {
+            _playbackError.emit(error)
         }
     }
 
