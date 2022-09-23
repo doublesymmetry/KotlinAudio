@@ -17,7 +17,7 @@ class PlayerEventHolder {
     private var _playbackEnd = MutableSharedFlow<PlaybackEndedReason?>(1)
     var playbackEnd = _playbackEnd.asSharedFlow()
 
-    private var _playbackError = MutableSharedFlow<PlaybackError?>(1)
+    private var _playbackError = MutableSharedFlow<PlaybackError>(1)
     var playbackError = _playbackError.asSharedFlow()
 
     private var _playWhenReadyChange = MutableSharedFlow<PlayWhenReadyChangeData>(1)

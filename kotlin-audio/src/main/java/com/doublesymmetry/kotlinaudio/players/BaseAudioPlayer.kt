@@ -643,11 +643,11 @@ abstract class BaseAudioPlayer internal constructor(
         override fun onPlayerError(error: PlaybackException) {
             playerEventHolder.updatePlaybackError(
                 PlaybackError(
-                    error.message,
                     error.errorCodeName
                         .replace("ERROR_CODE_", "")
                         .lowercase(Locale.getDefault())
-                        .replace("_", "-")
+                        .replace("_", "-"),
+                    error.message
                 )
             )
         }
