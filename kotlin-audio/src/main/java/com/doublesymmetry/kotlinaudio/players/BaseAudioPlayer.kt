@@ -22,12 +22,12 @@ import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.notification.NotificationManager
+import com.doublesymmetry.kotlinaudio.players.components.PlayerCache
+import com.doublesymmetry.kotlinaudio.players.components.getMediaMetadataCompat
 import com.doublesymmetry.kotlinaudio.utils.isUriLocal
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.DefaultLoadControl.*
 import com.google.android.exoplayer2.Player.Listener
-import com.google.android.exoplayer2.database.DatabaseProvider
-import com.google.android.exoplayer2.database.StandaloneDatabaseProvider
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.metadata.Metadata
@@ -40,13 +40,11 @@ import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.upstream.*
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource
-import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor
 import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.io.File
 import java.util.concurrent.TimeUnit
 
 abstract class BaseAudioPlayer internal constructor(private val context: Context, playerConfig: PlayerConfig, private val bufferConfig: BufferConfig?, private val cacheConfig: CacheConfig?) : AudioManager.OnAudioFocusChangeListener {
@@ -148,9 +146,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     init {
         if (cacheConfig != null) {
-            val cacheDir = File(context.cacheDir, cacheConfig.identifier)
-            val db: DatabaseProvider = StandaloneDatabaseProvider(context)
-            cache = SimpleCache(cacheDir, LeastRecentlyUsedCacheEvictor(cacheConfig.maxCacheSize ?: 0), db)
+            cache = PlayerCache.getInstance(context, cacheConfig)
         }
 
         exoPlayer = ExoPlayer.Builder(context)
@@ -271,6 +267,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         notificationManager.destroy()
         exoPlayer.release()
         cache?.release()
+        cache = null
         mediaSession.isActive = false
     }
 

@@ -4,6 +4,7 @@ import android.content.Context
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.session.MediaSessionCompat
 import com.doublesymmetry.kotlinaudio.models.*
+import com.doublesymmetry.kotlinaudio.players.components.getMediaMetadataCompat
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.IllegalSeekPositionException
 import com.google.android.exoplayer2.Player
