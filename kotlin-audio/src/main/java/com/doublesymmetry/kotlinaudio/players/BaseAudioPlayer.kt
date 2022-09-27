@@ -271,6 +271,7 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         notificationManager.destroy()
         exoPlayer.release()
         cache?.release()
+        cache = null
         mediaSession.isActive = false
     }
 
