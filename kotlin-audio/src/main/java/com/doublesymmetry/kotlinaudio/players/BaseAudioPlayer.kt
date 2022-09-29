@@ -72,17 +72,18 @@ abstract class BaseAudioPlayer internal constructor(
 
     var state: AudioPlayerState? = null
 
+    var playbackError: PlaybackError? = null
+
     var playerState: AudioPlayerState = AudioPlayerState.IDLE
         private set(value) {
             if (value != field) {
                 field = value
                 playerEventHolder.updateAudioPlayerState(value)
-                if (value == AudioPlayerState.IDLE) {
-                    abandonAudioFocusIfHeld()
-                }
-
-                if (value == AudioPlayerState.READY) {
-                    requestAudioFocus()
+                when (value) {
+                    AudioPlayerState.IDLE,
+                    AudioPlayerState.ERROR -> abandonAudioFocusIfHeld()
+                    AudioPlayerState.READY -> requestAudioFocus()
+                    else -> {}
                 }
             }
         }
@@ -220,7 +221,7 @@ abstract class BaseAudioPlayer internal constructor(
             mediaSessionConnector.setPlayer(playerToUse)
         }
         scope.launch {
-            playerEventHolder.stateChange.collect{
+            playerEventHolder.stateChange.collect {
                 state = it
             }
         }
@@ -622,15 +623,24 @@ abstract class BaseAudioPlayer internal constructor(
             for (i in 0 until events.size()) {
                 when (events[i]) {
                     Player.EVENT_PLAYBACK_STATE_CHANGED -> {
-                        playerState = when (player.playbackState) {
+                        var state = when (player.playbackState) {
                             Player.STATE_BUFFERING -> AudioPlayerState.BUFFERING
                             Player.STATE_READY -> AudioPlayerState.READY
-                            Player.STATE_IDLE -> AudioPlayerState.IDLE
+                            Player.STATE_IDLE ->
+                                // Avoid transitioning to idle from error
+                                if (playerState == AudioPlayerState.ERROR)
+                                    null
+                                else
+                                    AudioPlayerState.IDLE
                             Player.STATE_ENDED -> AudioPlayerState.ENDED
-                            else -> playerState // noop
+                            else -> null // noop
+                        }
+                        if (state != null && state != playerState) {
+                            playerState = state
                         }
                     }
                     Player.EVENT_MEDIA_ITEM_TRANSITION -> {
+                        playbackError = null
                         playerState = AudioPlayerState.LOADING
                     }
                     Player.EVENT_PLAY_WHEN_READY_CHANGED -> {
@@ -648,15 +658,16 @@ abstract class BaseAudioPlayer internal constructor(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            playerEventHolder.updatePlaybackError(
-                PlaybackError(
-                    error.errorCodeName
-                        .replace("ERROR_CODE_", "")
-                        .lowercase(Locale.getDefault())
-                        .replace("_", "-"),
-                    error.message
-                )
+            var _playbackError = PlaybackError(
+                error.errorCodeName
+                    .replace("ERROR_CODE_", "")
+                    .lowercase(Locale.getDefault())
+                    .replace("_", "-"),
+                error.message
             )
+            playerEventHolder.updatePlaybackError(_playbackError)
+            playbackError = _playbackError
+            playerState = AudioPlayerState.ERROR
         }
     }
 }
