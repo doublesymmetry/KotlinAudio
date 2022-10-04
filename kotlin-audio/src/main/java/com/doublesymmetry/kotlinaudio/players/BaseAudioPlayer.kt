@@ -45,6 +45,7 @@ import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 abstract class BaseAudioPlayer internal constructor(
