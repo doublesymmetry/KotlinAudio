@@ -1,4 +1,4 @@
-package com.doublesymmetry.kotlinaudio.players
+package com.doublesymmetry.kotlinaudio.players.components
 
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.RatingCompat
