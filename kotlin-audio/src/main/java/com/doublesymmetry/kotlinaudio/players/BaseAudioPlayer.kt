@@ -313,6 +313,10 @@ abstract class BaseAudioPlayer internal constructor(
      */
     open fun stop() {
         exoPlayer.stop()
+        clear()
+    }
+
+    open fun clear() {
         exoPlayer.clearMediaItems()
     }
 

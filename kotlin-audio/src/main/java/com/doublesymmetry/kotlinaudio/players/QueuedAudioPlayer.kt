@@ -252,6 +252,11 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         super.destroy()
     }
 
+    override fun clear() {
+        queue.clear()
+        super.clear()
+    }
+
     private inner class KotlinAudioQueueNavigator(mediaSession: MediaSessionCompat) : TimelineQueueNavigator(mediaSession) {
         override fun getMediaDescription(player: Player, windowIndex: Int): MediaDescriptionCompat {
             val item = queue[windowIndex]
