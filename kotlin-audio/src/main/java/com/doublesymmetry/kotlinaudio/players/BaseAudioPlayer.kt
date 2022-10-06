@@ -334,10 +334,14 @@ abstract class BaseAudioPlayer internal constructor(
         mediaSession.isActive = false
     }
 
-    fun seek(duration: Long, unit: TimeUnit) {
-        val millis = TimeUnit.MILLISECONDS.convert(duration, unit)
+    open fun seek(duration: Long, unit: TimeUnit) {
+        val positionMs = TimeUnit.MILLISECONDS.convert(duration, unit)
+        exoPlayer.seekTo(positionMs)
+    }
 
-        exoPlayer.seekTo(millis)
+    open fun seekBy(offset: Long, unit: TimeUnit) {
+        val positionMs = exoPlayer.currentPosition + TimeUnit.MILLISECONDS.convert(offset, unit)
+        exoPlayer.seekTo(positionMs)
     }
 
     private fun getMediaItemFromAudioItem(audioItem: AudioItem): MediaItem {
