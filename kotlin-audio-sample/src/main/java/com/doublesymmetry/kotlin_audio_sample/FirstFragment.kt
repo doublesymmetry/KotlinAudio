@@ -44,6 +44,7 @@ class FirstFragment : Fragment() {
         player = QueuedAudioPlayer(requireActivity(), playerConfig = PlayerConfig(interceptPlayerActionsTriggeredExternally = true))
         player.add(firstItem)
         player.add(secondItem)
+        player.playerOptions.repeatMode = RepeatMode.ALL
         player.play()
 
         binding.buttonNext.setOnClickListener {
