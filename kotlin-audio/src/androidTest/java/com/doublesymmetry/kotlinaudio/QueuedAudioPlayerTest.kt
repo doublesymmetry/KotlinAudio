@@ -1,27 +1,39 @@
 package com.doublesymmetry.kotlinaudio
 
 import androidx.test.platform.app.InstrumentationRegistry
-import com.doublesymmetry.kotlinaudio.models.*
+import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
+import com.doublesymmetry.kotlinaudio.models.CacheConfig
+import com.doublesymmetry.kotlinaudio.models.RepeatMode.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
 import com.doublesymmetry.kotlinaudio.utils.*
-import com.doublesymmetry.kotlinaudio.models.RepeatMode.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInfo
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
+
 class QueuedAudioPlayerTest {
     private lateinit var testPlayer: QueuedAudioPlayer
+    private lateinit var states: MutableList<String>
+
     val tracks = listOf(
         TestSound.short,
         TestSound.fiveSeconds,
         TestSound.fiveSeconds2
     )
+
+    @AfterEach
+    fun afterEach() {
+        runBlocking(Dispatchers.Main) {
+            testPlayer.clear()
+        }
+    }
 
     @BeforeEach
     fun setUp(testInfo: TestInfo) {
@@ -33,6 +45,20 @@ class QueuedAudioPlayerTest {
                 identifier = testInfo.displayName
             )
         )
+        runBlocking(Dispatchers.Main) {
+            testPlayer.volume = 0f
+        }
+        states = mutableListOf()
+        testPlayer.event.stateChange.map {
+            if (it != AudioPlayerState.BUFFERING) {
+                states.add(it.toString())
+            }
+        }.stateIn(
+            CoroutineScope(Dispatchers.Default),
+            SharingStarted.Eagerly,
+            emptyList<AudioPlayerState>()
+        )
+        testPlayer.event.stateChange.waitUntil { it == AudioPlayerState.IDLE }
     }
 
     @Nested
@@ -291,14 +317,15 @@ class QueuedAudioPlayerTest {
             fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeOff_thenShouldMoveToNextItemAndPlay() =
                 runBlocking(Dispatchers.Main) {
                     testPlayer.play()
-                    testPlayer.add(listOf(TestSound.short, TestSound.fiveSeconds))
+                    testPlayer.add(listOf(TestSound.fiveSeconds2, TestSound.fiveSeconds))
                     testPlayer.playerOptions.repeatMode = OFF
-                    testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
+                    testPlayer.seekAndWaitForNextTrackTransition(4.5.toLong(), TimeUnit.SECONDS)
+                    testPlayer.play()
 
                     eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                         assertTrue(testPlayer.nextItems.isEmpty())
                         assertEquals(TestSound.fiveSeconds, testPlayer.currentItem)
-                        assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                        assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "LOADING", "READY", "PLAYING"), states);
                     })
                 }
 
@@ -387,19 +414,17 @@ class QueuedAudioPlayerTest {
             fun givenAddedTwoItemsAndAllowingPlaybackToEnd_whenRepeatModeOne_thenShouldRestartCurrentItem() =
                 runBlocking(Dispatchers.Main) {
                     testPlayer.play()
-                    testPlayer.add(listOf(TestSound.fiveSeconds, TestSound.short))
+                    testPlayer.add(listOf(TestSound.fiveSeconds, TestSound.fiveSeconds2))
                     testPlayer.playerOptions.repeatMode = ONE
                     testPlayer.seekAndWaitForNextTrackTransition(
-                        4.5.toLong(),
+                        4.toLong(),
                         TimeUnit.SECONDS
                     )
-
-                    eventually {
-                        assertTrue(testPlayer.position < 4500)
+                    eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                         assertEquals(1, testPlayer.nextItems.size)
                         assertEquals(0, testPlayer.currentIndex)
-                        assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                    }
+                        assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "LOADING", "READY", "PLAYING"), states);
+                    })
                 }
 
             @Test
@@ -427,10 +452,9 @@ class QueuedAudioPlayerTest {
                         4.5.toLong(),
                         TimeUnit.SECONDS
                     )
-                    val currentPosition = testPlayer.position
 
                     eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
-                        assertTrue(testPlayer.position < currentPosition)
+                        assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "LOADING", "READY", "PLAYING"), states);
                         assertEquals(0, testPlayer.nextItems.size)
                         assertEquals(0, testPlayer.currentIndex)
                         assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
@@ -636,7 +660,7 @@ class QueuedAudioPlayerTest {
                 testPlayer.play()
                 testPlayer.load(TestSound.fiveSeconds)
                 eventually {
-                    assertEquals(testPlayer.playerState, AudioPlayerState.PLAYING)
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                 }
             }
 
