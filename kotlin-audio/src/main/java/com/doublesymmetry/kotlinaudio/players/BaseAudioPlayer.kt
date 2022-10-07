@@ -640,6 +640,10 @@ abstract class BaseAudioPlayer internal constructor(
                         playbackError = null
                         if (currentItem != null) {
                             playerState = AudioPlayerState.LOADING
+                            if (isPlaying) {
+                                playerState = AudioPlayerState.READY
+                                playerState = AudioPlayerState.PLAYING
+                            }
                         }
                     }
                     Player.EVENT_PLAY_WHEN_READY_CHANGED -> {
