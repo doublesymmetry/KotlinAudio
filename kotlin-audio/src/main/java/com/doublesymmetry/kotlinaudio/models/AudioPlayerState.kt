@@ -7,7 +7,7 @@ enum class AudioPlayerState {
     /** The current [AudioItem] is loaded, and the player is ready to start playing. */
     READY,
 
-    /** The current [AudioItem] is playing, but is currently buffering. */
+    /** The current [AudioItem] is currently buffering. */
     BUFFERING,
 
     /** The player is paused. */
