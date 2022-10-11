@@ -64,6 +64,21 @@ class AudioPlayerTest {
         }
 
         @Test
+        fun givenLoadSourceAndPlayWhenReadyAfterLoadSource_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
+            testPlayer.load(TestSound.fiveSeconds, true)
+            launchWithTimeoutSync(this) {
+                testPlayer.event.stateChange
+                    .waitUntil { it == AudioPlayerState.PLAYING }
+                    .collect {
+                        testPlayer.load(TestSound.fiveSeconds2, true)
+                    }
+            }
+            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "LOADING", "READY", "PLAYING"), states);
+            })
+        }
+
+        @Test
         fun givenPlaySource_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
             testPlayer.play()
             testPlayer.load(TestSound.default)
