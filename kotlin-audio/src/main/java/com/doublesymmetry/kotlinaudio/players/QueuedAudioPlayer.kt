@@ -242,11 +242,6 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
         queue.subList(0, currentIndex).clear()
     }
 
-    override fun stop() {
-        super.stop()
-        queue.clear()
-    }
-
     override fun destroy() {
         queue.clear()
         super.destroy()

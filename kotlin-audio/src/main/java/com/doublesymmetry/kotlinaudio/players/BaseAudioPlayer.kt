@@ -314,11 +314,14 @@ abstract class BaseAudioPlayer internal constructor(
     }
 
     /**
-     * Stops playback, resetting the player and the queue. To use the player again, simply add a new [AudioItem].
+     * Stops playback, without clearing the active item. Calling this method will cause the playback
+     * state to transition to AudioPlayerState.IDLE and the player will release the loaded media and
+     * resources required for playback.
      */
     open fun stop() {
+        playerState = AudioPlayerState.STOPPED
+        exoPlayer.playWhenReady = false
         exoPlayer.stop()
-        clear()
     }
 
     open fun clear() {
@@ -624,8 +627,11 @@ abstract class BaseAudioPlayer internal constructor(
                             Player.STATE_BUFFERING -> AudioPlayerState.BUFFERING
                             Player.STATE_READY -> AudioPlayerState.READY
                             Player.STATE_IDLE ->
-                                // Avoid transitioning to idle from error
-                                if (playerState == AudioPlayerState.ERROR)
+                                // Avoid transitioning to idle from error or stopped
+                                if (
+                                    playerState == AudioPlayerState.ERROR ||
+                                    playerState == AudioPlayerState.STOPPED
+                                )
                                     null
                                 else
                                     AudioPlayerState.IDLE
@@ -647,7 +653,7 @@ abstract class BaseAudioPlayer internal constructor(
                         }
                     }
                     Player.EVENT_PLAY_WHEN_READY_CHANGED -> {
-                        if (!player.playWhenReady) {
+                        if (!player.playWhenReady && playerState != AudioPlayerState.STOPPED) {
                             playerState = AudioPlayerState.PAUSED
                         }
                     }

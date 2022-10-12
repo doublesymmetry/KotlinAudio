@@ -13,6 +13,9 @@ enum class AudioPlayerState {
     /** The player is paused. */
     PAUSED,
 
+    /** The player is stopped. */
+    STOPPED,
+
     /** The player is playing. */
     PLAYING,
 
