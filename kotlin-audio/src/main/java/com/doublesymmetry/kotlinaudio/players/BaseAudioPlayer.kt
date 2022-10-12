@@ -302,11 +302,15 @@ abstract class BaseAudioPlayer internal constructor(
 
     fun play() {
         exoPlayer.play()
-        exoPlayer.prepare()
+        if (currentItem != null) {
+            exoPlayer.prepare()
+        }
     }
 
     fun prepare() {
-        exoPlayer.prepare()
+        if (currentItem != null) {
+            exoPlayer.prepare()
+        }
     }
 
     fun pause() {
