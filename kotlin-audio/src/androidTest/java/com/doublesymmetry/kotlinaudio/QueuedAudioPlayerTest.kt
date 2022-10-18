@@ -218,6 +218,26 @@ class QueuedAudioPlayerTest {
             }
 
         @Test
+        fun givenAddedTwoItemsSkippingToSecondItemAndSeekingToThreeSecondsAndCallingPrevious_thenShouldHaveOneItem() =
+            runBlocking(Dispatchers.Main) {
+                testPlayer.add(tracks[1])
+                testPlayer.add(tracks[2])
+                testPlayer.jumpToItem(1)
+                testPlayer.seek(3000, TimeUnit.MILLISECONDS)
+                testPlayer.play()
+                eventually {
+                    assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                    assertTrue(testPlayer.position > 3000)
+                    assertEquals(1, testPlayer.previousItems.size)
+                }
+                testPlayer.previous()
+                eventually {
+                    assertEquals(testPlayer.currentIndex, 0)
+                    assertEquals(0, testPlayer.previousItems.size)
+                }
+            }
+
+        @Test
         fun givenAddedTwoItemsAndRemovedPreviousItems_thenShouldBeEmpty() =
             runBlocking(Dispatchers.Main) {
                 testPlayer.add(tracks[0])
@@ -510,7 +530,7 @@ class QueuedAudioPlayerTest {
                     }
 
                     eventually(Duration.ofSeconds(10), Dispatchers.Main, fun() {
-                        let expectedStates = mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "READY", "PLAYING", "STOPPED")
+                        var expectedStates = mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "READY", "PLAYING", "STOPPED")
                         assertEquals(expectedStates, states);
                     })
                     assertEquals(0, testPlayer.currentIndex)

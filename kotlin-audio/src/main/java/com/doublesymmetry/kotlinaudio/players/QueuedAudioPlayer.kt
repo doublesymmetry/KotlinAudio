@@ -161,18 +161,20 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
     }
 
     /**
-     * Play the next item in the queue, if any.
+     * Skip to the next item in the queue, which may depend on the current repeat mode.
+     * Does nothing if there is no next item to skip to.
      */
     fun next() {
-        exoPlayer.seekToNext()
+        exoPlayer.seekToNextMediaItem()
         exoPlayer.prepare()
     }
 
     /**
-     * Play the previous item in the queue, if any. Otherwise, starts the current item from the beginning.
+     * Skip to the previous item in the queue, which may depend on the current repeat mode.
+     * Does nothing if there is no previous item to skip to.
      */
     fun previous() {
-        exoPlayer.seekToPrevious()
+        exoPlayer.seekToPreviousMediaItem()
         exoPlayer.prepare()
     }
 
@@ -204,7 +206,7 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
      */
     fun jumpToItem(index: Int) {
         try {
-            exoPlayer.seekTo(index, C.INDEX_UNSET.toLong())
+            exoPlayer.seekTo(index, C.TIME_UNSET)
             exoPlayer.prepare()
         } catch (e: IllegalSeekPositionException) {
             throw Error("This item index $index does not exist. The size of the queue is ${queue.size} items.")
