@@ -18,6 +18,7 @@ import java.time.Duration
 class AudioPlayerTest {
     private lateinit var testPlayer: QueuedAudioPlayer
     private lateinit var states: MutableList<String>
+    private lateinit var statesWithoutBuffering: MutableList<String>
 
     @BeforeEach
     fun setUp(testInfo: TestInfo) {
@@ -27,9 +28,24 @@ class AudioPlayerTest {
             cacheConfig = CacheConfig(maxCacheSize = (1024 * 50).toLong(), identifier = testInfo.displayName)
         )
         states = mutableListOf()
+        statesWithoutBuffering = mutableListOf()
         testPlayer.event.stateChange.map {
-            if (it != AudioPlayerState.BUFFERING) {
+            if (
+                // Skipping buffering and ready since it depends on circumstances when and how often
+                // rebuffering.
+                it != AudioPlayerState.BUFFERING &&
+                it != AudioPlayerState.READY &&
+                // Also make sure we aren't adding duplicate states (due to skipping those above)
+                (states.size == 0 || states.last() != it.toString())
+            ) {
                 states.add(it.toString())
+            }
+
+            if (
+                // Skipping buffering:
+                it != AudioPlayerState.BUFFERING
+            ) {
+                statesWithoutBuffering.add(it.toString())
             }
         }.stateIn(
             CoroutineScope(Dispatchers.Default),
@@ -50,7 +66,7 @@ class AudioPlayerTest {
         fun givenLoadSource_thenShouldBeReady() = runBlocking(Dispatchers.Main) {
             testPlayer.load(TestSound.default)
             eventually {
-                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY"), states);
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY"), statesWithoutBuffering);
             }
         }
 
@@ -58,7 +74,7 @@ class AudioPlayerTest {
         fun givenLoadSourceAndPlayWhenReady_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
             testPlayer.load(TestSound.fiveSeconds, true)
             eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
-                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING"), states);
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING"), states);
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
             })
         }
@@ -74,7 +90,7 @@ class AudioPlayerTest {
                     }
             }
             eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
-                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "LOADING", "READY", "PLAYING"), states);
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "LOADING", "PLAYING"), states);
             })
         }
 
@@ -83,7 +99,16 @@ class AudioPlayerTest {
             testPlayer.play()
             testPlayer.load(TestSound.default)
             eventually {
-                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING"), states.subList(0, 4));
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING"), states.subList(0, 3));
+            }
+        }
+
+        @Test
+        fun givenPlaySource_thenShouldBePlayingAndFinallyEnded() = runBlocking(Dispatchers.Main) {
+            testPlayer.play()
+            testPlayer.load(TestSound.default)
+            eventually {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "ENDED"), states.subList(0, 4));
             }
         }
 
@@ -98,7 +123,7 @@ class AudioPlayerTest {
             }
 
             eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
-                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "PAUSED"), states);
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "PAUSED"), states);
                 assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
             })
         }
@@ -118,9 +143,9 @@ class AudioPlayerTest {
                     }
             }
             eventually {
-                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY", "PLAYING", "IDLE"), states);
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "STOPPED"), states);
                 assertEquals(true, hasBeenPlaying)
-                assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
+                assertEquals(AudioPlayerState.STOPPED, testPlayer.playerState)
             }
         }
     }
