@@ -333,6 +333,13 @@ abstract class BaseAudioPlayer internal constructor(
     }
 
     /**
+     * Pause playback whenever an item plays to its end.
+     */
+    fun setPauseAtEndOfItem(pause: Boolean) {
+        exoPlayer.setPauseAtEndOfMediaItems(pause)
+    }
+
+    /**
      * Stops and destroys the player. Only call this when you are finished using the player, otherwise use [pause].
      */
     @CallSuper
@@ -613,7 +620,8 @@ abstract class BaseAudioPlayer internal constructor(
          * Called when the value returned from Player.getPlayWhenReady() changes.
          */
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            playerEventHolder.updatePlayWhenReadyChange(PlayWhenReadyChangeData(playWhenReady))
+            val pausedBecauseReachedEnd = reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM
+            playerEventHolder.updatePlayWhenReadyChange(PlayWhenReadyChangeData(playWhenReady, pausedBecauseReachedEnd))
         }
 
         /**
