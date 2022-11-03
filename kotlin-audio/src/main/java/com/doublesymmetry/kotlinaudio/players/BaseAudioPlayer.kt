@@ -28,6 +28,7 @@ import com.doublesymmetry.kotlinaudio.utils.isUriLocal
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.DefaultLoadControl.*
 import com.google.android.exoplayer2.Player.Listener
+import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.metadata.Metadata
@@ -45,7 +46,7 @@ import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.Locale
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 abstract class BaseAudioPlayer internal constructor(
@@ -59,6 +60,7 @@ abstract class BaseAudioPlayer internal constructor(
 
     private var cache: SimpleCache? = null
     private val scope = MainScope()
+    private var playerConfig: PlayerConfig = playerConfig
 
     val notificationManager: NotificationManager
 
@@ -73,11 +75,13 @@ abstract class BaseAudioPlayer internal constructor(
             if (value != field) {
                 field = value
                 playerEventHolder.updateAudioPlayerState(value)
-                when (value) {
-                    AudioPlayerState.IDLE,
-                    AudioPlayerState.ERROR -> abandonAudioFocusIfHeld()
-                    AudioPlayerState.READY -> requestAudioFocus()
-                    else -> {}
+                if (!playerConfig.handleAudioFocus) {
+                    when (value) {
+                        AudioPlayerState.IDLE,
+                        AudioPlayerState.ERROR -> abandonAudioFocusIfHeld()
+                        AudioPlayerState.READY -> requestAudioFocus()
+                        else -> {}
+                    }
                 }
             }
         }
@@ -189,6 +193,23 @@ abstract class BaseAudioPlayer internal constructor(
                 if (bufferConfig != null) setLoadControl(setupBuffer(bufferConfig))
             }
             .build()
+
+        // Whether ExoPlayer should manage audio focus for us automatically
+        // see https://medium.com/google-exoplayer/easy-audio-focus-with-exoplayer-a2dcbbe4640e
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(
+                when (playerConfig.audioContentType) {
+                    AudioContentType.MUSIC -> C.AUDIO_CONTENT_TYPE_MUSIC
+                    AudioContentType.SPEECH -> C.AUDIO_CONTENT_TYPE_SPEECH
+                    AudioContentType.SONIFICATION -> C.AUDIO_CONTENT_TYPE_SONIFICATION
+                    AudioContentType.MOVIE -> C.AUDIO_CONTENT_TYPE_MOVIE
+                    AudioContentType.UNKNOWN -> C.AUDIO_CONTENT_TYPE_UNKNOWN
+                }
+            )
+            .build();
+        exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
+
         forwardingPlayer = createForwardingPlayer()
 
         mediaSession.isActive = true
@@ -491,28 +512,24 @@ abstract class BaseAudioPlayer internal constructor(
 
     override fun onAudioFocusChange(focusChange: Int) {
         Timber.d("Audio focus changed")
-
-        var isPermanent = false
-        var isPaused = false
-        var isDucking = false
-
-        when (focusChange) {
-            AUDIOFOCUS_LOSS -> {
-                isPermanent = true
-                isPaused = true
-                abandonAudioFocusIfHeld()
-            }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> isPaused = true
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> if (playerOptions.alwaysPauseOnInterruption) isPaused =
-                true else isDucking = true
+        var isPermanent = focusChange == AUDIOFOCUS_LOSS
+        var isPaused = when (focusChange) {
+            AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> true
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> playerOptions.alwaysPauseOnInterruption
+            else -> false
         }
+        if (!playerConfig.handleAudioFocus) {
+            if (isPermanent) abandonAudioFocusIfHeld()
 
-        if (isDucking) {
-            volumeMultiplier = 0.5f
-            wasDucking = true
-        } else if (wasDucking) {
-            volumeMultiplier = 1f
-            wasDucking = false
+            var isDucking = focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
+                    && !playerOptions.alwaysPauseOnInterruption
+            if (isDucking) {
+                volumeMultiplier = 0.5f
+                wasDucking = true
+            } else if (wasDucking) {
+                volumeMultiplier = 1f
+                wasDucking = false
+            }
         }
 
         playerEventHolder.updateOnAudioFocusChanged(isPaused, isPermanent)
