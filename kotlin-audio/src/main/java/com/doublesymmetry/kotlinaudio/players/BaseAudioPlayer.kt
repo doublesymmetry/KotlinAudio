@@ -480,12 +480,11 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             }
 
             if (automaticallyUpdateNotificationMetadata) {
-                notificationManager.notificationMetadata = NotificationMetadata(currentItem?.title, currentItem?.artist, currentItem?.artwork)
-            }
-
-            mediaSessionConnector.setMediaMetadataProvider {
-                val mediaSource = currentItem?.let { item -> getMediaSourceFromAudioItem(item) }
-                mediaSource?.getMediaMetadataCompat() ?: MediaMetadataCompat.Builder().build()
+                notificationManager.notificationMetadata = NotificationMetadata(
+                    currentItem?.title,
+                    currentItem?.artist,
+                    currentItem?.artwork
+                )
             }
         }
 
