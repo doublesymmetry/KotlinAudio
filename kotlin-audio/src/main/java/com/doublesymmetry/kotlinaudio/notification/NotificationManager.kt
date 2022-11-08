@@ -155,19 +155,18 @@ class NotificationManager internal constructor(private val context: Context, pri
 
             hideAllButtonsByDefault()
 
-            if (buttons.isNotEmpty()) {
-                config.buttons.forEach { button ->
-                    when (button) {
-                        is NotificationButton.PLAY_PAUSE -> {
-                            button.playIcon?.let { setPlayActionIconResourceId(it) }
-                            button.pauseIcon?.let { setPauseActionIconResourceId(it) }
-                        }
-                        is NotificationButton.STOP -> button.icon?.let { setStopActionIconResourceId(it) }
-                        is NotificationButton.FORWARD -> button.icon?.let { setFastForwardActionIconResourceId(it) }
-                        is NotificationButton.BACKWARD -> button.icon?.let { setRewindActionIconResourceId(it) }
-                        is NotificationButton.NEXT -> button.icon?.let { setNextActionIconResourceId(it) }
-                        is NotificationButton.PREVIOUS -> button.icon?.let { setPreviousActionIconResourceId(it) }
+            for (button in buttons) {
+                if (button == null) continue
+                when (button) {
+                    is NotificationButton.PLAY_PAUSE -> {
+                        button.playIcon?.let { setPlayActionIconResourceId(it) }
+                        button.pauseIcon?.let { setPauseActionIconResourceId(it) }
                     }
+                    is NotificationButton.STOP -> button.icon?.let { setStopActionIconResourceId(it) }
+                    is NotificationButton.FORWARD -> button.icon?.let { setFastForwardActionIconResourceId(it) }
+                    is NotificationButton.BACKWARD -> button.icon?.let { setRewindActionIconResourceId(it) }
+                    is NotificationButton.NEXT -> button.icon?.let { setNextActionIconResourceId(it) }
+                    is NotificationButton.PREVIOUS -> button.icon?.let { setPreviousActionIconResourceId(it) }
                 }
             }
         }.build()
@@ -175,7 +174,8 @@ class NotificationManager internal constructor(private val context: Context, pri
         internalNotificationManager?.apply {
             setColor(config.accentColor ?: Color.TRANSPARENT)
             config.smallIcon?.let { setSmallIcon(it) }
-            config.buttons.forEach { button ->
+            for (button in buttons) {
+                if (button == null) continue
                 when (button) {
                     is NotificationButton.PLAY_PAUSE -> {
                         showPlayPauseButton = true
