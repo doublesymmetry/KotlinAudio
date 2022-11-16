@@ -10,6 +10,7 @@ import coil.imageLoader
 import coil.request.Disposable
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.models.AudioItem
+import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 
@@ -26,8 +27,6 @@ interface NotificationMetadataProvider {
  */
 class DescriptionAdapter(private val metadataProvider: NotificationMetadataProvider, private val context: Context, private val pendingIntent: PendingIntent?): PlayerNotificationManager.MediaDescriptionAdapter {
     private var disposable: Disposable? = null
-    private var currentArtworkBitmap: Bitmap? = null
-    private var currentArtworkUrl: String? = null
 
     override fun getCurrentContentTitle(player: Player): CharSequence {
         return metadataProvider.getTitle() ?: player.mediaMetadata.displayTitle ?: ""
@@ -41,45 +40,46 @@ class DescriptionAdapter(private val metadataProvider: NotificationMetadataProvi
         return metadataProvider.getArtist() ?: player.mediaMetadata.artist ?: player.mediaMetadata.albumArtist
     }
 
+    override fun getCurrentSubText(player: Player): CharSequence? {
+        return metadataProvider.getTitle() ?: player.mediaMetadata.displayTitle ?: ""
+    }
+
     override fun getCurrentLargeIcon(
         player: Player,
         callback: PlayerNotificationManager.BitmapCallback,
     ): Bitmap? {
+        val itemHolder = player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
+            ?: return null
         val data = player.mediaMetadata.artworkData
         val source = metadataProvider.getArtworkUrl() ?: player.mediaMetadata.artworkUri
 
         if (data != null) {
-            clearUrlArtwork()
             return BitmapFactory.decodeByteArray(data, 0, data.size)
         }
 
         if (source == null) {
-            clearUrlArtwork()
             return null
         }
-
-        val artworkUrl = source.toString()
-        if (artworkUrl != currentArtworkUrl) {
-            var hadBitmapOnTime = false
-            clearUrlArtwork()
-            currentArtworkUrl = artworkUrl
-            disposable = context.imageLoader.enqueue(
-                ImageRequest.Builder(context)
-                    .data(source)
-                    .target {
-                        currentArtworkBitmap = (it as BitmapDrawable).bitmap
-                        // If getCurrentLargeIcon returned the placeholder before we could pass back
-                        // the artwork bitmap use the onBitmap callback to set the notification
-                        // after the fact:
-                        if (!hadBitmapOnTime) {
-                            callback.onBitmap(it.bitmap)
-                        }
-                    }
-                    .build()
-            )
-            hadBitmapOnTime = currentArtworkBitmap != null
+        if (itemHolder.artworkBitmap != null) {
+            return itemHolder.artworkBitmap
         }
-        return currentArtworkBitmap ?: getLargeIconPlaceholder()
+        var hadBitmapOnTime = false
+        disposable = context.imageLoader.enqueue(
+            ImageRequest.Builder(context)
+                .data(source)
+                .target {
+                    itemHolder.artworkBitmap = (it as BitmapDrawable).bitmap
+                    // If getCurrentLargeIcon returned the placeholder before we could pass back
+                    // the artwork bitmap use the onBitmap callback to set the notification
+                    // after the fact:
+                    if (!hadBitmapOnTime) {
+                        callback.onBitmap(it.bitmap)
+                    }
+                }
+                .build()
+        )
+        hadBitmapOnTime = itemHolder.artworkBitmap != null
+        return itemHolder.artworkBitmap ?: getLargeIconPlaceholder()
     }
 
     private fun getLargeIconPlaceholder(): Bitmap {
@@ -88,14 +88,8 @@ class DescriptionAdapter(private val metadataProvider: NotificationMetadataProvi
         return placeholderImage
     }
 
-    private fun clearUrlArtwork() {
-        currentArtworkBitmap = null
-        currentArtworkUrl = null
+    fun release() {
         disposable?.dispose()
         disposable = null
-    }
-
-    fun release() {
-        clearUrlArtwork()
     }
 }

@@ -50,7 +50,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 abstract class BaseAudioPlayer internal constructor(
-    private val context: Context,
+    internal val context: Context,
     playerConfig: PlayerConfig,
     private val bufferConfig: BufferConfig?,
     private val cacheConfig: CacheConfig?
@@ -221,6 +221,7 @@ abstract class BaseAudioPlayer internal constructor(
             context,
             playerToUse,
             mediaSession.sessionToken,
+            mediaSessionConnector,
             notificationEventHolder
         )
 
@@ -385,7 +386,7 @@ abstract class BaseAudioPlayer internal constructor(
     }
 
     private fun getMediaItemFromAudioItem(audioItem: AudioItem): MediaItem {
-        return MediaItem.Builder().setUri(audioItem.audioUrl).setTag(audioItem).build()
+        return MediaItem.Builder().setUri(audioItem.audioUrl).setTag(AudioItemHolder(audioItem)).build()
     }
 
     protected fun getMediaSourceFromAudioItem(audioItem: AudioItem): MediaSource {
@@ -625,11 +626,6 @@ abstract class BaseAudioPlayer internal constructor(
                     currentItem?.artist,
                     currentItem?.artwork
                 )
-            }
-
-            mediaSessionConnector.setMediaMetadataProvider {
-                val mediaSource = currentItem?.let { item -> getMediaSourceFromAudioItem(item) }
-                mediaSource?.getMediaMetadataCompat() ?: MediaMetadataCompat.Builder().build()
             }
         }
 
