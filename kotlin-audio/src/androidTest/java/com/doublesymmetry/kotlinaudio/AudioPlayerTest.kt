@@ -12,10 +12,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
+import java.time.Duration
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AudioPlayerTest {
     private lateinit var testPlayer: QueuedAudioPlayer
+    private lateinit var states: MutableList<String>
+    private lateinit var statesWithoutBuffering: MutableList<String>
 
     @BeforeEach
     fun setUp(testInfo: TestInfo) {
@@ -24,6 +27,32 @@ class AudioPlayerTest {
             appContext,
             cacheConfig = CacheConfig(maxCacheSize = (1024 * 50).toLong(), identifier = testInfo.displayName)
         )
+        states = mutableListOf()
+        statesWithoutBuffering = mutableListOf()
+        testPlayer.event.stateChange.map {
+            if (
+                // Skipping buffering and ready since it depends on circumstances when and how often
+                // rebuffering.
+                it != AudioPlayerState.BUFFERING &&
+                it != AudioPlayerState.READY &&
+                // Also make sure we aren't adding duplicate states (due to skipping those above)
+                (states.size == 0 || states.last() != it.toString())
+            ) {
+                states.add(it.toString())
+            }
+
+            if (
+                // Skipping buffering:
+                it != AudioPlayerState.BUFFERING
+            ) {
+                statesWithoutBuffering.add(it.toString())
+            }
+        }.stateIn(
+            CoroutineScope(Dispatchers.Default),
+            SharingStarted.Eagerly,
+            emptyList<AudioPlayerState>()
+        )
+        testPlayer.event.stateChange.waitUntil { it == AudioPlayerState.IDLE }
     }
 
     @Nested
@@ -34,55 +63,58 @@ class AudioPlayerTest {
         }
 
         @Test
-        fun givenLoadSource_thenShouldBeLoading() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.default, playWhenReady = false)
-            assertEquals(AudioPlayerState.LOADING, testPlayer.playerState)
-        }
-
-        @Test
         fun givenLoadSource_thenShouldBeReady() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = false)
+            testPlayer.load(TestSound.default)
             eventually {
-                assertEquals(AudioPlayerState.READY, testPlayer.playerState)
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY"), statesWithoutBuffering);
             }
         }
 
         @Test
         fun givenLoadSourceAndPlayWhenReady_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = true)
-            eventually {
+            testPlayer.load(TestSound.fiveSeconds, true)
+            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING"), states);
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+            })
+        }
+
+        @Test
+        fun givenLoadSourceAndPlayWhenReadyAfterLoadSource_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
+            testPlayer.load(TestSound.fiveSeconds, true)
+            launchWithTimeoutSync(this) {
+                testPlayer.event.stateChange
+                    .waitUntil { it == AudioPlayerState.PLAYING }
+                    .collect {
+                        testPlayer.load(TestSound.fiveSeconds2, true)
+                    }
             }
+            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "LOADING", "PLAYING"), states);
+            })
         }
 
         @Test
         fun givenPlaySource_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = false)
-
-            launchWithTimeoutSync(this) {
-                testPlayer.event.stateChange
-                    .waitUntil { it == AudioPlayerState.READY }
-                    .collect { testPlayer.play() }
-            }
-
+            testPlayer.play()
+            testPlayer.load(TestSound.default)
             eventually {
-                assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING"), states.subList(0, 3));
+            }
+        }
+
+        @Test
+        fun givenPlaySource_thenShouldBePlayingAndFinallyEnded() = runBlocking(Dispatchers.Main) {
+            testPlayer.play()
+            testPlayer.load(TestSound.default)
+            eventually {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "ENDED"), states.subList(0, 4));
             }
         }
 
         @Test
         fun givenPausingSource_thenShouldBePaused() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = true)
+            testPlayer.load(TestSound.fiveSeconds, playWhenReady = true)
 
             launchWithTimeoutSync(this) {
                 testPlayer.event.stateChange
@@ -90,16 +122,15 @@ class AudioPlayerTest {
                     .collect { testPlayer.pause() }
             }
 
-            eventually {
+            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "PAUSED"), states);
                 assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
-            }
+            })
         }
 
         @Test
         fun givenStoppingSource_thenShouldBeIdle() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = true)
+            testPlayer.load(TestSound.long, playWhenReady = true)
 
             var hasBeenPlaying = false
 
@@ -111,12 +142,10 @@ class AudioPlayerTest {
                         testPlayer.stop()
                     }
             }
-
             eventually {
+                assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "STOPPED"), states);
                 assertEquals(true, hasBeenPlaying)
-                // TODO: We probably expect this to be IDLE
-//                assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
-                assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
+                assertEquals(AudioPlayerState.STOPPED, testPlayer.playerState)
             }
         }
     }
@@ -149,9 +178,7 @@ class AudioPlayerTest {
 
         @Test
         fun givenPlayingSource_thenShouldBe1() = runBlocking(Dispatchers.Main) {
-            // TODO: Fix bug with load when you use it to add first item
-//            testPlayer.load(TestSound.default, playWhenReady = false)
-            testPlayer.add(TestSound.long, playWhenReady = true)
+            testPlayer.load(TestSound.fiveSeconds, playWhenReady = true)
 
             var hasMetSpeedExpectation = false
             launchWithTimeoutSync(this) {

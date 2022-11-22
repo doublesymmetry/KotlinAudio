@@ -28,6 +28,7 @@ import com.doublesymmetry.kotlinaudio.utils.isUriLocal
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.DefaultLoadControl.*
 import com.google.android.exoplayer2.Player.Listener
+import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.metadata.Metadata
@@ -45,14 +46,21 @@ import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.*
 import java.util.concurrent.TimeUnit
 
-abstract class BaseAudioPlayer internal constructor(private val context: Context, playerConfig: PlayerConfig, private val bufferConfig: BufferConfig?, private val cacheConfig: CacheConfig?) : AudioManager.OnAudioFocusChangeListener {
+abstract class BaseAudioPlayer internal constructor(
+    internal val context: Context,
+    playerConfig: PlayerConfig,
+    private val bufferConfig: BufferConfig?,
+    private val cacheConfig: CacheConfig?
+) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
     private val forwardingPlayer: ForwardingPlayer
 
     private var cache: SimpleCache? = null
     private val scope = MainScope()
+    private var playerConfig: PlayerConfig = playerConfig
 
     val notificationManager: NotificationManager
 
@@ -61,12 +69,27 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     open val currentItem: AudioItem?
         get() = exoPlayer.currentMediaItem?.localConfiguration?.tag as AudioItem?
 
+    var playbackError: PlaybackError? = null
     var playerState: AudioPlayerState = AudioPlayerState.IDLE
         private set(value) {
             if (value != field) {
                 field = value
                 playerEventHolder.updateAudioPlayerState(value)
+                if (!playerConfig.handleAudioFocus) {
+                    when (value) {
+                        AudioPlayerState.IDLE,
+                        AudioPlayerState.ERROR -> abandonAudioFocusIfHeld()
+                        AudioPlayerState.READY -> requestAudioFocus()
+                        else -> {}
+                    }
+                }
             }
+        }
+
+    var playWhenReady: Boolean
+        get() = exoPlayer.playWhenReady
+        set(value) {
+            exoPlayer.playWhenReady = value
         }
 
     val duration: Long
@@ -121,16 +144,31 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
             mediaSession.setRatingType(ratingType)
             mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
-                override fun onCommand(player: Player, command: String, extras: Bundle?, cb: ResultReceiver?): Boolean {
+                override fun onCommand(
+                    player: Player,
+                    command: String,
+                    extras: Bundle?,
+                    cb: ResultReceiver?
+                ): Boolean {
                     return true
                 }
 
                 override fun onSetRating(player: Player, rating: RatingCompat) {
-                    playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.RATING(rating, null))
+                    playerEventHolder.updateOnPlayerActionTriggeredExternally(
+                        MediaSessionCallback.RATING(
+                            rating,
+                            null
+                        )
+                    )
                 }
 
                 override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
-                    playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.RATING(rating, extras))
+                    playerEventHolder.updateOnPlayerActionTriggeredExternally(
+                        MediaSessionCallback.RATING(
+                            rating,
+                            extras
+                        )
+                    )
                 }
             })
         }
@@ -155,19 +193,45 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
                 if (bufferConfig != null) setLoadControl(setupBuffer(bufferConfig))
             }
             .build()
+
+        // Whether ExoPlayer should manage audio focus for us automatically
+        // see https://medium.com/google-exoplayer/easy-audio-focus-with-exoplayer-a2dcbbe4640e
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(
+                when (playerConfig.audioContentType) {
+                    AudioContentType.MUSIC -> C.AUDIO_CONTENT_TYPE_MUSIC
+                    AudioContentType.SPEECH -> C.AUDIO_CONTENT_TYPE_SPEECH
+                    AudioContentType.SONIFICATION -> C.AUDIO_CONTENT_TYPE_SONIFICATION
+                    AudioContentType.MOVIE -> C.AUDIO_CONTENT_TYPE_MOVIE
+                    AudioContentType.UNKNOWN -> C.AUDIO_CONTENT_TYPE_UNKNOWN
+                }
+            )
+            .build();
+        exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
+
         forwardingPlayer = createForwardingPlayer()
 
         mediaSession.isActive = true
 
-        val playerToUse = if (playerConfig.interceptPlayerActionsTriggeredExternally) forwardingPlayer else exoPlayer
+        val playerToUse =
+            if (playerConfig.interceptPlayerActionsTriggeredExternally) forwardingPlayer else exoPlayer
 
-        notificationManager = NotificationManager(context, playerToUse, mediaSession.sessionToken, notificationEventHolder)
+        notificationManager = NotificationManager(
+            context,
+            playerToUse,
+            mediaSession.sessionToken,
+            mediaSessionConnector,
+            notificationEventHolder
+        )
 
         exoPlayer.addListener(PlayerListener())
 
         scope.launch {
             mediaSessionConnector.setPlayer(playerToUse)
         }
+
+        playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
     }
 
     private fun createForwardingPlayer(): ForwardingPlayer {
@@ -201,18 +265,27 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             }
 
             override fun seekTo(positionMs: Long) {
-                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.SEEK(positionMs))
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(
+                    MediaSessionCallback.SEEK(
+                        positionMs
+                    )
+                )
             }
         }
     }
 
     private fun setupBuffer(bufferConfig: BufferConfig): DefaultLoadControl {
         bufferConfig.apply {
-            val multiplier = DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS / DEFAULT_BUFFER_FOR_PLAYBACK_MS
-            val minBuffer = if (minBuffer != null && minBuffer != 0) minBuffer else DEFAULT_MIN_BUFFER_MS
-            val maxBuffer = if (maxBuffer != null && maxBuffer != 0) maxBuffer else DEFAULT_MAX_BUFFER_MS
-            val playBuffer = if (playBuffer != null && playBuffer != 0) playBuffer else DEFAULT_BUFFER_FOR_PLAYBACK_MS
-            val backBuffer = if (backBuffer != null && backBuffer != 0) backBuffer else DEFAULT_BACK_BUFFER_DURATION_MS
+            val multiplier =
+                DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS / DEFAULT_BUFFER_FOR_PLAYBACK_MS
+            val minBuffer =
+                if (minBuffer != null && minBuffer != 0) minBuffer else DEFAULT_MIN_BUFFER_MS
+            val maxBuffer =
+                if (maxBuffer != null && maxBuffer != 0) maxBuffer else DEFAULT_MAX_BUFFER_MS
+            val playBuffer =
+                if (playBuffer != null && playBuffer != 0) playBuffer else DEFAULT_BUFFER_FOR_PLAYBACK_MS
+            val backBuffer =
+                if (backBuffer != null && backBuffer != 0) backBuffer else DEFAULT_BACK_BUFFER_DURATION_MS
 
             return Builder()
                 .setBufferDurationsMs(minBuffer, maxBuffer, playBuffer, playBuffer * multiplier)
@@ -224,25 +297,42 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     /**
      * Will replace the current item with a new one and load it into the player.
      * @param item The [AudioItem] to replace the current one.
-     * @param playWhenReady If this is `true` it will automatically start playback. Default is `true`.
+     * @param playWhenReady Whether playback starts automatically.
      */
     open fun load(item: AudioItem, playWhenReady: Boolean = true) {
+        exoPlayer.playWhenReady = playWhenReady
+        load(item)
+    }
+
+    /**
+     * Will replace the current item with a new one and load it into the player.
+     * @param item The [AudioItem] to replace the current one.
+     */
+    open fun load(item: AudioItem) {
         val mediaSource = getMediaSourceFromAudioItem(item)
         exoPlayer.addMediaSource(mediaSource)
-        exoPlayer.playWhenReady = playWhenReady
         exoPlayer.prepare()
     }
 
     fun togglePlaying() {
         if (exoPlayer.isPlaying) {
-            exoPlayer.pause()
+            pause()
         } else {
-            exoPlayer.play()
+            play()
         }
     }
 
     fun play() {
         exoPlayer.play()
+        if (currentItem != null) {
+            exoPlayer.prepare()
+        }
+    }
+
+    fun prepare() {
+        if (currentItem != null) {
+            exoPlayer.prepare()
+        }
     }
 
     fun pause() {
@@ -250,11 +340,25 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     }
 
     /**
-     * Stops playback, resetting the player and the queue. To use the player again, simply add a new [AudioItem].
+     * Stops playback, without clearing the active item. Calling this method will cause the playback
+     * state to transition to AudioPlayerState.IDLE and the player will release the loaded media and
+     * resources required for playback.
      */
     open fun stop() {
+        playerState = AudioPlayerState.STOPPED
+        exoPlayer.playWhenReady = false
         exoPlayer.stop()
+    }
+
+    open fun clear() {
         exoPlayer.clearMediaItems()
+    }
+
+    /**
+     * Pause playback whenever an item plays to its end.
+     */
+    fun setPauseAtEndOfItem(pause: Boolean) {
+        exoPlayer.setPauseAtEndOfMediaItems(pause)
     }
 
     /**
@@ -271,14 +375,18 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         mediaSession.isActive = false
     }
 
-    fun seek(duration: Long, unit: TimeUnit) {
-        val millis = TimeUnit.MILLISECONDS.convert(duration, unit)
+    open fun seek(duration: Long, unit: TimeUnit) {
+        val positionMs = TimeUnit.MILLISECONDS.convert(duration, unit)
+        exoPlayer.seekTo(positionMs)
+    }
 
-        exoPlayer.seekTo(millis)
+    open fun seekBy(offset: Long, unit: TimeUnit) {
+        val positionMs = exoPlayer.currentPosition + TimeUnit.MILLISECONDS.convert(offset, unit)
+        exoPlayer.seekTo(positionMs)
     }
 
     private fun getMediaItemFromAudioItem(audioItem: AudioItem): MediaItem {
-        return MediaItem.Builder().setUri(audioItem.audioUrl).setTag(audioItem).build()
+        return MediaItem.Builder().setUri(audioItem.audioUrl).setTag(AudioItemHolder(audioItem)).build()
     }
 
     protected fun getMediaSourceFromAudioItem(audioItem: AudioItem): MediaSource {
@@ -286,11 +394,12 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
         val uri = Uri.parse(audioItem.audioUrl)
         val mediaItem = getMediaItemFromAudioItem(audioItem)
 
-        val userAgent = if (audioItem.options == null || audioItem.options!!.userAgent.isNullOrBlank()) {
-            Util.getUserAgent(context, APPLICATION_NAME)
-        } else {
-            audioItem.options!!.userAgent
-        }
+        val userAgent =
+            if (audioItem.options == null || audioItem.options!!.userAgent.isNullOrBlank()) {
+                Util.getUserAgent(context, APPLICATION_NAME)
+            } else {
+                audioItem.options!!.userAgent
+            }
 
         factory = when {
             audioItem.options?.resourceId != null -> {
@@ -338,7 +447,10 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
             .createMediaSource(mediaItem)
     }
 
-    private fun createProgressiveSource(mediaItem: MediaItem, factory: DataSource.Factory): ProgressiveMediaSource {
+    private fun createProgressiveSource(
+        mediaItem: MediaItem,
+        factory: DataSource.Factory
+    ): ProgressiveMediaSource {
         return ProgressiveMediaSource.Factory(
             factory, DefaultExtractorsFactory()
                 .setConstantBitrateSeekingEnabled(true)
@@ -401,27 +513,24 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
 
     override fun onAudioFocusChange(focusChange: Int) {
         Timber.d("Audio focus changed")
-
-        var isPermanent = false
-        var isPaused = false
-        var isDucking = false
-
-        when (focusChange) {
-            AUDIOFOCUS_LOSS -> {
-                isPermanent = true
-                isPaused = true
-                abandonAudioFocusIfHeld()
-            }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> isPaused = true
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> if (playerOptions.alwaysPauseOnInterruption) isPaused = true else isDucking = true
+        var isPermanent = focusChange == AUDIOFOCUS_LOSS
+        var isPaused = when (focusChange) {
+            AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> true
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> playerOptions.alwaysPauseOnInterruption
+            else -> false
         }
+        if (!playerConfig.handleAudioFocus) {
+            if (isPermanent) abandonAudioFocusIfHeld()
 
-        if (isDucking) {
-            volumeMultiplier = 0.5f
-            wasDucking = true
-        } else if (wasDucking) {
-            volumeMultiplier = 1f
-            wasDucking = false
+            var isDucking = focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
+                    && !playerOptions.alwaysPauseOnInterruption
+            if (isDucking) {
+                volumeMultiplier = 0.5f
+                wasDucking = true
+            } else if (wasDucking) {
+                volumeMultiplier = 1f
+                wasDucking = false
+            }
         }
 
         playerEventHolder.updateOnAudioFocusChanged(isPaused, isPermanent)
@@ -432,74 +541,167 @@ abstract class BaseAudioPlayer internal constructor(private val context: Context
     }
 
     inner class PlayerListener : Listener {
+        /**
+         * Called when there is metadata associated with the current playback time.
+         */
         override fun onMetadata(metadata: Metadata) {
-            PlaybackMetadata.fromId3Metadata(metadata)?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
-            PlaybackMetadata.fromIcy(metadata)?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
-            PlaybackMetadata.fromVorbisComment(metadata)?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
-            PlaybackMetadata.fromQuickTime(metadata)?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
+            PlaybackMetadata.fromId3Metadata(metadata)
+                ?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
+            PlaybackMetadata.fromIcy(metadata)
+                ?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
+            PlaybackMetadata.fromVorbisComment(metadata)
+                ?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
+            PlaybackMetadata.fromQuickTime(metadata)
+                ?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
         }
 
-        override fun onPlaybackStateChanged(playbackState: Int) {
-            playerState = when (playbackState) {
-                Player.STATE_BUFFERING -> if (exoPlayer.playWhenReady) AudioPlayerState.BUFFERING else AudioPlayerState.LOADING
-                Player.STATE_READY -> {
-                    requestAudioFocus()
-                    AudioPlayerState.READY
-                }
-                Player.STATE_IDLE -> {
-                    abandonAudioFocusIfHeld()
-                    AudioPlayerState.IDLE
-                }
-                Player.STATE_ENDED -> AudioPlayerState.ENDED
-                else -> {
-                    Timber.e("Unknown playback state: $playbackState")
-                    AudioPlayerState.IDLE
-                }
-            }
-        }
 
-        override fun onPositionDiscontinuity(oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int) {
+        /**
+         * A position discontinuity occurs when the playing period changes, the playback position
+         * jumps within the period currently being played, or when the playing period has been
+         * skipped or removed.
+         */
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
             this@BaseAudioPlayer.oldPosition = oldPosition.positionMs
 
             when (reason) {
-                Player.DISCONTINUITY_REASON_AUTO_TRANSITION -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.AUTO(oldPosition.positionMs, newPosition.positionMs))
-                Player.DISCONTINUITY_REASON_SEEK -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK(oldPosition.positionMs, newPosition.positionMs))
-                Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SEEK_FAILED(oldPosition.positionMs, newPosition.positionMs))
-                Player.DISCONTINUITY_REASON_REMOVE -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.QUEUE_CHANGED(oldPosition.positionMs, newPosition.positionMs))
-                Player.DISCONTINUITY_REASON_SKIP -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.SKIPPED_PERIOD(oldPosition.positionMs, newPosition.positionMs))
-                Player.DISCONTINUITY_REASON_INTERNAL -> playerEventHolder.updatePositionChangedReason(PositionChangedReason.UNKNOWN(oldPosition.positionMs, newPosition.positionMs))
+                Player.DISCONTINUITY_REASON_AUTO_TRANSITION -> playerEventHolder.updatePositionChangedReason(
+                    PositionChangedReason.AUTO(oldPosition.positionMs, newPosition.positionMs)
+                )
+                Player.DISCONTINUITY_REASON_SEEK -> playerEventHolder.updatePositionChangedReason(
+                    PositionChangedReason.SEEK(oldPosition.positionMs, newPosition.positionMs)
+                )
+                Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT -> playerEventHolder.updatePositionChangedReason(
+                    PositionChangedReason.SEEK_FAILED(
+                        oldPosition.positionMs,
+                        newPosition.positionMs
+                    )
+                )
+                Player.DISCONTINUITY_REASON_REMOVE -> playerEventHolder.updatePositionChangedReason(
+                    PositionChangedReason.QUEUE_CHANGED(
+                        oldPosition.positionMs,
+                        newPosition.positionMs
+                    )
+                )
+                Player.DISCONTINUITY_REASON_SKIP -> playerEventHolder.updatePositionChangedReason(
+                    PositionChangedReason.SKIPPED_PERIOD(
+                        oldPosition.positionMs,
+                        newPosition.positionMs
+                    )
+                )
+                Player.DISCONTINUITY_REASON_INTERNAL -> playerEventHolder.updatePositionChangedReason(
+                    PositionChangedReason.UNKNOWN(oldPosition.positionMs, newPosition.positionMs)
+                )
             }
         }
 
+        /**
+         * Called when playback transitions to a media item or starts repeating a media item
+         * according to the current repeat mode. Note that this callback is also called when the
+         * playlist becomes non-empty or empty as a consequence of a playlist change.
+         */
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             when (reason) {
-                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.AUTO(oldPosition))
-                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.QUEUE_CHANGED(oldPosition))
-                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.REPEAT(oldPosition))
-                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> playerEventHolder.updateAudioItemTransition(AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM(oldPosition))
+                Player.MEDIA_ITEM_TRANSITION_REASON_AUTO -> playerEventHolder.updateAudioItemTransition(
+                    AudioItemTransitionReason.AUTO(oldPosition)
+                )
+                Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED -> playerEventHolder.updateAudioItemTransition(
+                    AudioItemTransitionReason.QUEUE_CHANGED(oldPosition)
+                )
+                Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT -> playerEventHolder.updateAudioItemTransition(
+                    AudioItemTransitionReason.REPEAT(oldPosition)
+                )
+                Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> playerEventHolder.updateAudioItemTransition(
+                    AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM(oldPosition)
+                )
             }
 
             if (automaticallyUpdateNotificationMetadata) {
-                notificationManager.notificationMetadata = NotificationMetadata(currentItem?.title, currentItem?.artist, currentItem?.artwork)
-            }
-
-            mediaSessionConnector.setMediaMetadataProvider {
-                val mediaSource = currentItem?.let { item -> getMediaSourceFromAudioItem(item) }
-                mediaSource?.getMediaMetadataCompat() ?: MediaMetadataCompat.Builder().build()
+                notificationManager.notificationMetadata = NotificationMetadata(
+                    currentItem?.title,
+                    currentItem?.artist,
+                    currentItem?.artwork
+                )
             }
         }
 
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            // Unless ExoPlayer is in STATE_READY then it is either idle, buffering or the media has ended
-            // Without this check these other state will be immediately overridden by PLAYING/PAUSED
-            if (exoPlayer.playbackState != Player.STATE_READY) {
-                return
-            }
+        /**
+         * Called when the value returned from Player.getPlayWhenReady() changes.
+         */
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            val pausedBecauseReachedEnd = reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM
+            playerEventHolder.updatePlayWhenReadyChange(PlayWhenReadyChangeData(playWhenReady, pausedBecauseReachedEnd))
+        }
 
-            playerState = if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
-            playerEventHolder.updateAudioPlayerState(
-                if (isPlaying) AudioPlayerState.PLAYING else AudioPlayerState.PAUSED
+        /**
+         * The generic onEvents callback provides access to the Player object and specifies the set
+         * of events that occurred together. It’s always called after the callbacks that correspond
+         * to the individual events.
+         */
+        override fun onEvents(player: Player, events: Player.Events) {
+            // Note that it is necessary to set `playerState` in order, since each mutation fires an
+            // event.
+            for (i in 0 until events.size()) {
+                when (events[i]) {
+                    Player.EVENT_PLAYBACK_STATE_CHANGED -> {
+                        var state = when (player.playbackState) {
+                            Player.STATE_BUFFERING -> AudioPlayerState.BUFFERING
+                            Player.STATE_READY -> AudioPlayerState.READY
+                            Player.STATE_IDLE ->
+                                // Avoid transitioning to idle from error or stopped
+                                if (
+                                    playerState == AudioPlayerState.ERROR ||
+                                    playerState == AudioPlayerState.STOPPED
+                                )
+                                    null
+                                else
+                                    AudioPlayerState.IDLE
+                            Player.STATE_ENDED -> AudioPlayerState.ENDED
+                            else -> null // noop
+                        }
+                        if (state != null && state != playerState) {
+                            playerState = state
+                        }
+                    }
+                    Player.EVENT_MEDIA_ITEM_TRANSITION -> {
+                        playbackError = null
+                        if (currentItem != null) {
+                            playerState = AudioPlayerState.LOADING
+                            if (isPlaying) {
+                                playerState = AudioPlayerState.READY
+                                playerState = AudioPlayerState.PLAYING
+                            }
+                        }
+                    }
+                    Player.EVENT_PLAY_WHEN_READY_CHANGED -> {
+                        if (!player.playWhenReady && playerState != AudioPlayerState.STOPPED) {
+                            playerState = AudioPlayerState.PAUSED
+                        }
+                    }
+                    Player.EVENT_IS_PLAYING_CHANGED -> {
+                        if (player.isPlaying) {
+                            playerState = AudioPlayerState.PLAYING
+                        }
+                    }
+                }
+            }
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            var _playbackError = PlaybackError(
+                error.errorCodeName
+                    .replace("ERROR_CODE_", "")
+                    .lowercase(Locale.getDefault())
+                    .replace("_", "-"),
+                error.message
             )
+            playerEventHolder.updatePlaybackError(_playbackError)
+            playbackError = _playbackError
+            playerState = AudioPlayerState.ERROR
         }
     }
 }

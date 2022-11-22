@@ -9,6 +9,7 @@ object TestSound {
     /** The common test case (track is 3 seconds long). */
     val default = DefaultAudioItem(
         "rawresource:///${R.raw.short_test_sound}", MediaType.DEFAULT,
+        title = "default",
         options = AudioItemOptions(
             resourceId = R.raw.test_sound,
         )
@@ -17,8 +18,27 @@ object TestSound {
     /** A short test case (track is less than 1 second long). */
     val short = DefaultAudioItem(
         "rawresource:///${R.raw.short_test_sound}", MediaType.DEFAULT,
+        title = "short",
         options = AudioItemOptions(
             resourceId = R.raw.short_test_sound,
+        )
+    )
+
+    /** Five seconds of silence. */
+    val fiveSeconds = DefaultAudioItem(
+        "rawresource:///${R.raw.five_seconds}", MediaType.DEFAULT,
+        title = "five seconds",
+        options = AudioItemOptions(
+            resourceId = R.raw.five_seconds
+        )
+    )
+
+    /** Five seconds of silence 2. */
+    val fiveSeconds2 = DefaultAudioItem(
+        "rawresource:///${R.raw.five_seconds}", MediaType.DEFAULT,
+        title = "five seconds 2",
+        options = AudioItemOptions(
+            resourceId = R.raw.five_seconds
         )
     )
 

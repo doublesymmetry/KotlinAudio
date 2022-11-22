@@ -41,9 +41,14 @@ class FirstFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        player = QueuedAudioPlayer(requireActivity(), playerConfig = PlayerConfig(interceptPlayerActionsTriggeredExternally = true))
+        player = QueuedAudioPlayer(requireActivity(), playerConfig = PlayerConfig(
+            interceptPlayerActionsTriggeredExternally = true,
+            handleAudioBecomingNoisy = true,
+            handleAudioFocus = true
+        ))
         player.add(firstItem)
         player.add(secondItem)
+        player.playerOptions.repeatMode = RepeatMode.ALL
         player.play()
 
         binding.buttonNext.setOnClickListener {

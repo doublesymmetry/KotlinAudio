@@ -1,11 +1,15 @@
 package com.doublesymmetry.kotlinaudio.players.components
 
+import android.net.Uri
+import android.os.Bundle
+import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.RatingCompat
+import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
 import com.google.android.exoplayer2.source.MediaSource
 
 fun MediaSource.getMediaMetadataCompat(): MediaMetadataCompat {
-    val audioItem = mediaItem.localConfiguration?.tag as com.doublesymmetry.kotlinaudio.models.AudioItem?
+    val audioItem = (mediaItem.localConfiguration?.tag as AudioItemHolder?)?.audioItem
     val metadata = mediaItem.mediaMetadata
     val title = metadata.title ?: audioItem?.title
     val artist = metadata.artist ?: audioItem?.artist

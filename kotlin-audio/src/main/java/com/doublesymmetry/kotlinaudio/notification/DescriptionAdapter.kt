@@ -10,7 +10,7 @@ import coil.imageLoader
 import coil.request.Disposable
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.models.AudioItem
-import com.google.android.exoplayer2.MediaMetadata
+import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 
@@ -40,43 +40,56 @@ class DescriptionAdapter(private val metadataProvider: NotificationMetadataProvi
         return metadataProvider.getArtist() ?: player.mediaMetadata.artist ?: player.mediaMetadata.albumArtist
     }
 
+    override fun getCurrentSubText(player: Player): CharSequence? {
+        return metadataProvider.getTitle() ?: player.mediaMetadata.displayTitle ?: ""
+    }
+
     override fun getCurrentLargeIcon(
         player: Player,
         callback: PlayerNotificationManager.BitmapCallback,
     ): Bitmap? {
-        var artworkBitmap: Bitmap? = null
+        val itemHolder = player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
+            ?: return null
+        val data = player.mediaMetadata.artworkData
+        val source = metadataProvider.getArtworkUrl() ?: player.mediaMetadata.artworkUri
 
-        val placeholderImage = Bitmap.createBitmap(400, 400, Bitmap.Config.ARGB_8888)
-        placeholderImage.eraseColor(Color.DKGRAY)
+        if (data != null) {
+            return BitmapFactory.decodeByteArray(data, 0, data.size)
+        }
 
-        disposable?.dispose()
-
-        val imageLoader = context.imageLoader
-        val request = ImageRequest.Builder(context)
-            .data(getArtworkSource(metadataProvider.getArtworkUrl(), player.mediaMetadata))
-            .target {
-                artworkBitmap = (it as BitmapDrawable).bitmap
-                callback.onBitmap(it.bitmap)
-            }
-            .build()
-
-        disposable = imageLoader.enqueue(request)
-
-        return artworkBitmap ?: placeholderImage
+        if (source == null) {
+            return null
+        }
+        if (itemHolder.artworkBitmap != null) {
+            return itemHolder.artworkBitmap
+        }
+        var hadBitmapOnTime = false
+        disposable = context.imageLoader.enqueue(
+            ImageRequest.Builder(context)
+                .data(source)
+                .target {
+                    itemHolder.artworkBitmap = (it as BitmapDrawable).bitmap
+                    // If getCurrentLargeIcon returned the placeholder before we could pass back
+                    // the artwork bitmap use the onBitmap callback to set the notification
+                    // after the fact:
+                    if (!hadBitmapOnTime) {
+                        callback.onBitmap(it.bitmap)
+                    }
+                }
+                .build()
+        )
+        hadBitmapOnTime = itemHolder.artworkBitmap != null
+        return itemHolder.artworkBitmap ?: getLargeIconPlaceholder()
     }
 
-    private fun getArtworkSource(artworkUrl: String?, mediaMetadata: MediaMetadata): Any? {
-        val data: ByteArray? = mediaMetadata.artworkData
-
-        return when {
-            artworkUrl != null -> artworkUrl
-            mediaMetadata.artworkUri != null -> mediaMetadata.artworkUri
-            data != null -> BitmapFactory.decodeByteArray(data, 0, data.size)
-            else -> null
-        }
+    private fun getLargeIconPlaceholder(): Bitmap {
+        val placeholderImage = Bitmap.createBitmap(400, 400, Bitmap.Config.ARGB_8888)
+        placeholderImage.eraseColor(Color.DKGRAY)
+        return placeholderImage
     }
 
     fun release() {
         disposable?.dispose()
+        disposable = null
     }
 }
