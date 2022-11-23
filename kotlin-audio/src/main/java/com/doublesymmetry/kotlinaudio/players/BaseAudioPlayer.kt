@@ -194,22 +194,6 @@ abstract class BaseAudioPlayer internal constructor(
             }
             .build()
 
-        // Whether ExoPlayer should manage audio focus for us automatically
-        // see https://medium.com/google-exoplayer/easy-audio-focus-with-exoplayer-a2dcbbe4640e
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(
-                when (playerConfig.audioContentType) {
-                    AudioContentType.MUSIC -> C.AUDIO_CONTENT_TYPE_MUSIC
-                    AudioContentType.SPEECH -> C.AUDIO_CONTENT_TYPE_SPEECH
-                    AudioContentType.SONIFICATION -> C.AUDIO_CONTENT_TYPE_SONIFICATION
-                    AudioContentType.MOVIE -> C.AUDIO_CONTENT_TYPE_MOVIE
-                    AudioContentType.UNKNOWN -> C.AUDIO_CONTENT_TYPE_UNKNOWN
-                }
-            )
-            .build();
-        exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
-
         forwardingPlayer = createForwardingPlayer()
 
         mediaSession.isActive = true
@@ -228,6 +212,21 @@ abstract class BaseAudioPlayer internal constructor(
         exoPlayer.addListener(PlayerListener())
 
         scope.launch {
+            // Whether ExoPlayer should manage audio focus for us automatically
+            // see https://medium.com/google-exoplayer/easy-audio-focus-with-exoplayer-a2dcbbe4640e
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(
+                    when (playerConfig.audioContentType) {
+                        AudioContentType.MUSIC -> C.AUDIO_CONTENT_TYPE_MUSIC
+                        AudioContentType.SPEECH -> C.AUDIO_CONTENT_TYPE_SPEECH
+                        AudioContentType.SONIFICATION -> C.AUDIO_CONTENT_TYPE_SONIFICATION
+                        AudioContentType.MOVIE -> C.AUDIO_CONTENT_TYPE_MOVIE
+                        AudioContentType.UNKNOWN -> C.AUDIO_CONTENT_TYPE_UNKNOWN
+                    }
+                )
+                .build();
+            exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
             mediaSessionConnector.setPlayer(playerToUse)
         }
 
