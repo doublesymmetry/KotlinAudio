@@ -27,6 +27,9 @@ class AudioPlayerTest {
             appContext,
             cacheConfig = CacheConfig(maxCacheSize = (1024 * 50).toLong(), identifier = testInfo.displayName)
         )
+        runBlocking(Dispatchers.Main) {
+            testPlayer.volume = 0f
+        }
         states = mutableListOf()
         statesWithoutBuffering = mutableListOf()
         testPlayer.event.stateChange.map {
