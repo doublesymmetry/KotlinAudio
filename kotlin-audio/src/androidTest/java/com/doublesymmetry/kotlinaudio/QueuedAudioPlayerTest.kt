@@ -232,16 +232,16 @@ class QueuedAudioPlayerTest {
                 testPlayer.jumpToItem(1)
                 testPlayer.seek(3000, TimeUnit.MILLISECONDS)
                 testPlayer.play()
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
                     assertTrue(testPlayer.position > 3000)
                     assertEquals(1, testPlayer.previousItems.size)
-                }
+                })
                 testPlayer.previous()
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertEquals(testPlayer.currentIndex, 0)
                     assertEquals(0, testPlayer.previousItems.size)
-                }
+                })
             }
 
         @Test
@@ -279,12 +279,12 @@ class QueuedAudioPlayerTest {
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
                 testPlayer.next()
 
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertEquals(1, testPlayer.previousItems.size)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                }
+                })
             }
 
         @Test
@@ -293,12 +293,12 @@ class QueuedAudioPlayerTest {
                 testPlayer.add(listOf(TestSound.short, TestSound.long))
                 testPlayer.next()
 
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertEquals(1, testPlayer.previousItems.size)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(TestSound.long, testPlayer.currentItem)
                     assertEquals(AudioPlayerState.READY, testPlayer.playerState)
-                }
+                })
             }
     }
 
@@ -333,12 +333,12 @@ class QueuedAudioPlayerTest {
                 testPlayer.next()
                 assertEquals(TestSound.long, testPlayer.currentItem)
                 testPlayer.previous()
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                     assertEquals(0, testPlayer.previousItems.size)
                     assertEquals(1, testPlayer.nextItems.size)
                     assertEquals(testPlayer.currentItem, TestSound.short)
                     assertEquals(AudioPlayerState.READY, testPlayer.playerState)
-                }
+                })
             }
     }
 
@@ -372,11 +372,11 @@ class QueuedAudioPlayerTest {
                     testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
                     testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
 
-                    eventually {
+                    eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                         assertTrue(testPlayer.nextItems.isEmpty())
                         assertEquals(TestSound.short, testPlayer.currentItem)
                         assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
-                    }
+                    })
                 }
 
             @Test
@@ -387,11 +387,11 @@ class QueuedAudioPlayerTest {
                     testPlayer.playerOptions.repeatMode = OFF
                     testPlayer.nextAndWaitForNextTrackTransition()
 
-                    eventually {
+                    eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                         assertTrue(testPlayer.nextItems.isEmpty())
                         assertEquals(TestSound.long, testPlayer.currentItem)
                         assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                    }
+                    })
                 }
 
             @Test
@@ -418,11 +418,11 @@ class QueuedAudioPlayerTest {
                     testPlayer.playerOptions.repeatMode = OFF
                     testPlayer.seekAndWaitForNextTrackTransition(0.0682.toLong(), TimeUnit.SECONDS)
 
-                    eventually {
+                    eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                         assertTrue(testPlayer.nextItems.isEmpty())
                         assertEquals(TestSound.short, testPlayer.currentItem)
                         assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
-                    }
+                    })
                 }
 
             @Test
@@ -599,11 +599,11 @@ class QueuedAudioPlayerTest {
                     testPlayer.playerOptions.repeatMode = ALL
                     testPlayer.nextAndWaitForNextTrackTransition()
 
-                    eventually {
+                    eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                         assertTrue(testPlayer.nextItems.isEmpty())
                         assertEquals(TestSound.fiveSeconds2, testPlayer.currentItem)
                         assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                    }
+                    })
                 }
 
             @Test
@@ -649,12 +649,12 @@ class QueuedAudioPlayerTest {
                     testPlayer.playerOptions.repeatMode = ALL
                     testPlayer.nextAndWaitForNextTrackTransition()
 
-                    eventually {
+                    eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                         assertTrue(testPlayer.position > 0)
                         assertEquals(0, testPlayer.nextItems.size)
                         assertEquals(0, testPlayer.currentIndex)
                         assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                    }
+                    })
                 }
         }
     }
@@ -733,9 +733,9 @@ class QueuedAudioPlayerTest {
             runBlocking(Dispatchers.Main) {
                 testPlayer.play()
                 testPlayer.load(TestSound.fiveSeconds)
-                eventually {
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                     assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
-                }
+                })
             }
 
 
