@@ -27,6 +27,9 @@ class AudioPlayerTest {
             appContext,
             cacheConfig = CacheConfig(maxCacheSize = (1024 * 50).toLong(), identifier = testInfo.displayName)
         )
+        runBlocking(Dispatchers.Main) {
+            testPlayer.volume = 0f
+        }
         states = mutableListOf()
         statesWithoutBuffering = mutableListOf()
         testPlayer.event.stateChange.map {
@@ -65,15 +68,15 @@ class AudioPlayerTest {
         @Test
         fun givenLoadSource_thenShouldBeReady() = runBlocking(Dispatchers.Main) {
             testPlayer.load(TestSound.default)
-            eventually {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(mutableListOf<String>("IDLE", "LOADING", "READY"), statesWithoutBuffering);
-            }
+            })
         }
 
         @Test
         fun givenLoadSourceAndPlayWhenReady_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
             testPlayer.load(TestSound.fiveSeconds, true)
-            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING"), states);
                 assertEquals(AudioPlayerState.PLAYING, testPlayer.playerState)
             })
@@ -89,7 +92,7 @@ class AudioPlayerTest {
                         testPlayer.load(TestSound.fiveSeconds2, true)
                     }
             }
-            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "LOADING", "PLAYING"), states);
             })
         }
@@ -98,18 +101,18 @@ class AudioPlayerTest {
         fun givenPlaySource_thenShouldBePlaying() = runBlocking(Dispatchers.Main) {
             testPlayer.play()
             testPlayer.load(TestSound.default)
-            eventually {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING"), states.subList(0, 3));
-            }
+            })
         }
 
         @Test
         fun givenPlaySource_thenShouldBePlayingAndFinallyEnded() = runBlocking(Dispatchers.Main) {
             testPlayer.play()
             testPlayer.load(TestSound.default)
-            eventually {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "ENDED"), states.subList(0, 4));
-            }
+            })
         }
 
         @Test
@@ -122,7 +125,7 @@ class AudioPlayerTest {
                     .collect { testPlayer.pause() }
             }
 
-            eventually(Duration.ofSeconds(1), Dispatchers.Main, fun () {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "PAUSED"), states);
                 assertEquals(AudioPlayerState.PAUSED, testPlayer.playerState)
             })
@@ -142,11 +145,11 @@ class AudioPlayerTest {
                         testPlayer.stop()
                     }
             }
-            eventually {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "STOPPED"), states);
                 assertEquals(true, hasBeenPlaying)
                 assertEquals(AudioPlayerState.STOPPED, testPlayer.playerState)
-            }
+            })
         }
     }
 
@@ -163,9 +166,9 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
 
-            eventually {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertTrue(testPlayer.position > 0)
-            }
+            })
         }
     }
 
@@ -187,9 +190,9 @@ class AudioPlayerTest {
                     .collect { hasMetSpeedExpectation = testPlayer.playbackSpeed == 1.0f }
             }
 
-            eventually {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertTrue(hasMetSpeedExpectation)
-            }
+            })
         }
     }
 
@@ -206,9 +209,9 @@ class AudioPlayerTest {
 //            testPlayer.load(TestSound.default, playWhenReady = false)
             testPlayer.add(TestSound.long, playWhenReady = true)
 
-            eventually {
+            eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
                 assertNotNull(testPlayer.currentItem)
-            }
+            })
         }
     }
 }
