@@ -6,10 +6,7 @@ import android.graphics.Color
 import android.support.v4.media.session.MediaSessionCompat
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
-import com.doublesymmetry.kotlinaudio.models.NotificationButton
-import com.doublesymmetry.kotlinaudio.models.NotificationConfig
-import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
-import com.doublesymmetry.kotlinaudio.models.NotificationState
+import com.doublesymmetry.kotlinaudio.models.*
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
@@ -30,6 +27,13 @@ class NotificationManager internal constructor(
 
     var notificationMetadata: NotificationMetadata? = null
         set(value) {
+            // Clear bitmap cache if artwork changes
+            if (field?.artworkUrl != value?.artworkUrl) {
+                val itemHolder = player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
+                if (itemHolder != null) {
+                    itemHolder.artworkBitmap = null
+                }
+            }
             field = value
             reload()
         }
