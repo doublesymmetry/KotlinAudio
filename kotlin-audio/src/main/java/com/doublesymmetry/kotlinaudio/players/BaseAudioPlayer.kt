@@ -75,6 +75,14 @@ abstract class BaseAudioPlayer internal constructor(
             if (value != field) {
                 field = value
                 playerEventHolder.updateAudioPlayerState(value)
+                val playbackStopped = arrayOf(
+                    AudioPlayerState.ERROR,
+                    AudioPlayerState.ENDED,
+                    AudioPlayerState.STOPPED
+                ).contains(value)
+                if (playbackStopped) {
+                    this.playWhenReady = false
+                }
                 if (!playerConfig.handleAudioFocus) {
                     when (value) {
                         AudioPlayerState.IDLE,
@@ -345,7 +353,6 @@ abstract class BaseAudioPlayer internal constructor(
      */
     open fun stop() {
         playerState = AudioPlayerState.STOPPED
-        exoPlayer.playWhenReady = false
         exoPlayer.stop()
     }
 
@@ -677,7 +684,11 @@ abstract class BaseAudioPlayer internal constructor(
                         }
                     }
                     Player.EVENT_PLAY_WHEN_READY_CHANGED -> {
-                        if (!player.playWhenReady && playerState != AudioPlayerState.STOPPED) {
+                        if (!player.playWhenReady && !arrayOf(
+                                AudioPlayerState.ERROR,
+                                AudioPlayerState.ENDED,
+                                AudioPlayerState.STOPPED
+                            ).contains(playerState)) {
                             playerState = AudioPlayerState.PAUSED
                         }
                     }

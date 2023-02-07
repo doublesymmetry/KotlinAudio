@@ -321,7 +321,7 @@ class QueuedAudioPlayerTest {
                     assertEquals(1, testPlayer.previousItems.size)
                     assertEquals(0, testPlayer.nextItems.size)
                     assertEquals(second, testPlayer.currentItem)
-                    assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
+                    assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "LOADING", "PLAYING", "ENDED"), states);
                 })
             }
 
@@ -375,7 +375,7 @@ class QueuedAudioPlayerTest {
                     eventually(Duration.ofSeconds(30), Dispatchers.Main, fun() {
                         assertTrue(testPlayer.nextItems.isEmpty())
                         assertEquals(TestSound.short, testPlayer.currentItem)
-                        assertEquals(AudioPlayerState.ENDED, testPlayer.playerState)
+                        assertEquals(mutableListOf<String>("IDLE", "LOADING", "PLAYING", "LOADING", "PLAYING", "ENDED"), states);
                     })
                 }
 
