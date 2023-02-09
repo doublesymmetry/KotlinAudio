@@ -1,14 +1,19 @@
 package com.doublesymmetry.kotlinaudio.players.components
 
+import android.media.MediaMetadata.METADATA_KEY_ALBUM
+import android.media.MediaMetadata.METADATA_KEY_ARTIST
+import android.media.MediaMetadata.METADATA_KEY_DURATION
+import android.media.MediaMetadata.METADATA_KEY_GENRE
+import android.media.MediaMetadata.METADATA_KEY_TITLE
 import android.net.Uri
 import android.os.Bundle
-import android.support.v4.media.MediaDescriptionCompat
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.RatingCompat
+import androidx.media3.common.MediaMetadata
+//import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Rating
+import androidx.media3.exoplayer.source.MediaSource
 import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
-import com.google.android.exoplayer2.source.MediaSource
 
-fun MediaSource.getMediaMetadataCompat(): MediaMetadataCompat {
+fun MediaSource.getMediaMetadata(): MediaMetadata {
     val audioItem = (mediaItem.localConfiguration?.tag as AudioItemHolder?)?.audioItem
     val metadata = mediaItem.mediaMetadata
     val title = metadata.title ?: audioItem?.title
@@ -17,21 +22,20 @@ fun MediaSource.getMediaMetadataCompat(): MediaMetadataCompat {
     val genre = metadata.genre
     val duration = audioItem?.duration ?: -1
     val artwork = metadata.artworkUri ?: audioItem?.artwork
-    val rating = RatingCompat.fromRating(metadata.userRating)
+    val rating = metadata.userRating
 
-    return MediaMetadataCompat.Builder().apply {
-        putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.toString())
-        putString(MediaMetadataCompat.METADATA_KEY_TITLE, title.toString())
-        putString(MediaMetadataCompat.METADATA_KEY_ALBUM, albumTitle.toString())
-        putString(MediaMetadataCompat.METADATA_KEY_GENRE, genre.toString())
-        putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+    return MediaMetadata.Builder().apply {
+        setArtist(artist.toString())
+        setTitle(title.toString())
+        setAlbumTitle(albumTitle.toString())
+        setGenre(genre.toString())
 
         if (artwork != null) {
-            putString(MediaMetadataCompat.METADATA_KEY_ART_URI, artwork.toString())
+            setArtworkUri(artwork as Uri?)
         }
 
         if (rating != null) {
-            putRating(MediaMetadataCompat.METADATA_KEY_RATING, rating)
+            setUserRating(rating)
         }
     }.build()
 }

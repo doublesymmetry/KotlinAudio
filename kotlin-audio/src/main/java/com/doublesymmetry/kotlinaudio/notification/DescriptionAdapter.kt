@@ -6,13 +6,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
+import androidx.media3.common.Player
+import androidx.media3.ui.PlayerNotificationManager
 import coil.imageLoader
 import coil.request.Disposable
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.models.AudioItem
 import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ui.PlayerNotificationManager
 
 interface NotificationMetadataProvider {
     fun getTitle(): String?

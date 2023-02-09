@@ -1,11 +1,11 @@
 package com.doublesymmetry.kotlinaudio.players.components
 
 import android.content.Context
+import androidx.media3.database.DatabaseProvider
+import androidx.media3.database.StandaloneDatabaseProvider
+import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
+import androidx.media3.datasource.cache.SimpleCache
 import com.doublesymmetry.kotlinaudio.models.CacheConfig
-import com.google.android.exoplayer2.database.DatabaseProvider
-import com.google.android.exoplayer2.database.StandaloneDatabaseProvider
-import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor
-import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import java.io.File
 
 object PlayerCache {

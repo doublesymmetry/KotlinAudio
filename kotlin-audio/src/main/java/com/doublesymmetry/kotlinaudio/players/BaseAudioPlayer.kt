@@ -1,48 +1,50 @@
 package com.doublesymmetry.kotlinaudio.players
 
 import android.content.Context
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
-import android.os.Bundle
-import android.os.ResultReceiver
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.RatingCompat
-import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.CallSuper
-import androidx.core.content.ContextCompat
-import androidx.media.AudioAttributesCompat
-import androidx.media.AudioAttributesCompat.CONTENT_TYPE_MUSIC
-import androidx.media.AudioAttributesCompat.USAGE_MEDIA
-import androidx.media.AudioFocusRequestCompat
-import androidx.media.AudioManagerCompat
-import androidx.media.AudioManagerCompat.AUDIOFOCUS_GAIN
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Metadata
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.Player.Listener
+import androidx.media3.common.util.Util
+import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
+import androidx.media3.datasource.DefaultDataSourceFactory
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.RawResourceDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.datasource.cache.SimpleCache
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_BACK_BUFFER_DURATION_MS
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_MAX_BUFFER_MS
+import androidx.media3.exoplayer.DefaultLoadControl.DEFAULT_MIN_BUFFER_MS
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.dash.DashMediaSource
+import androidx.media3.exoplayer.dash.DefaultDashChunkSource
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.smoothstreaming.DefaultSsChunkSource
+import androidx.media3.exoplayer.smoothstreaming.SsMediaSource
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.session.MediaSession
 import com.doublesymmetry.kotlinaudio.event.EventHolder
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.notification.NotificationManager
 import com.doublesymmetry.kotlinaudio.players.components.PlayerCache
-import com.doublesymmetry.kotlinaudio.players.components.getMediaMetadataCompat
 import com.doublesymmetry.kotlinaudio.utils.isUriLocal
-import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.DefaultLoadControl.*
-import com.google.android.exoplayer2.Player.Listener
-import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
-import com.google.android.exoplayer2.metadata.Metadata
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.ProgressiveMediaSource
-import com.google.android.exoplayer2.source.dash.DashMediaSource
-import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource
-import com.google.android.exoplayer2.source.hls.HlsMediaSource
-import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
-import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
-import com.google.android.exoplayer2.upstream.*
-import com.google.android.exoplayer2.upstream.cache.CacheDataSource
-import com.google.android.exoplayer2.upstream.cache.SimpleCache
-import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -57,6 +59,8 @@ abstract class BaseAudioPlayer internal constructor(
 ) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
     private val forwardingPlayer: ForwardingPlayer
+    protected val mediaSession: MediaSession
+
 
     private var cache: SimpleCache? = null
     private val scope = MainScope()
@@ -138,49 +142,46 @@ abstract class BaseAudioPlayer internal constructor(
     private val notificationEventHolder = NotificationEventHolder()
     private val playerEventHolder = PlayerEventHolder()
 
-    var ratingType: Int = RatingCompat.RATING_NONE
-        set(value) {
-            field = value
-
-            mediaSession.setRatingType(ratingType)
-            mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
-                override fun onCommand(
-                    player: Player,
-                    command: String,
-                    extras: Bundle?,
-                    cb: ResultReceiver?
-                ): Boolean {
-                    return true
-                }
-
-                override fun onSetRating(player: Player, rating: RatingCompat) {
-                    playerEventHolder.updateOnPlayerActionTriggeredExternally(
-                        MediaSessionCallback.RATING(
-                            rating,
-                            null
-                        )
-                    )
-                }
-
-                override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
-                    playerEventHolder.updateOnPlayerActionTriggeredExternally(
-                        MediaSessionCallback.RATING(
-                            rating,
-                            extras
-                        )
-                    )
-                }
-            })
-        }
+//    var ratingType: Int = Rating.RATING_NONE
+//        set(value) {
+//            field = value
+//
+//            mediaSession.setRatingType(ratingType)
+//            mediaSessionConnector.setRatingCallback(object : MediaSessionConnector.RatingCallback {
+//                override fun onCommand(
+//                    player: Player,
+//                    command: String,
+//                    extras: Bundle?,
+//                    cb: ResultReceiver?
+//                ): Boolean {
+//                    return true
+//                }
+//
+//                override fun onSetRating(player: Player, rating: RatingCompat) {
+//                    playerEventHolder.updateOnPlayerActionTriggeredExternally(
+//                        MediaSessionCallback.RATING(
+//                            rating,
+//                            null
+//                        )
+//                    )
+//                }
+//
+//                override fun onSetRating(player: Player, rating: RatingCompat, extras: Bundle?) {
+//                    playerEventHolder.updateOnPlayerActionTriggeredExternally(
+//                        MediaSessionCallback.RATING(
+//                            rating,
+//                            extras
+//                        )
+//                    )
+//                }
+//            })
+//        }
 
     val event = EventHolder(notificationEventHolder, playerEventHolder)
 
-    private var focus: AudioFocusRequestCompat? = null
+    private var focus: AudioFocusRequest? = null
     private var hasAudioFocus = false
     private var wasDucking = false
-
-    protected val mediaSession = MediaSessionCompat(context, "KotlinAudioPlayer")
-    protected val mediaSessionConnector = MediaSessionConnector(mediaSession)
 
     init {
         if (cacheConfig != null) {
@@ -195,8 +196,7 @@ abstract class BaseAudioPlayer internal constructor(
             .build()
 
         forwardingPlayer = createForwardingPlayer()
-
-        mediaSession.isActive = true
+        mediaSession = MediaSession.Builder(context, exoPlayer).build()
 
         val playerToUse =
             if (playerConfig.interceptPlayerActionsTriggeredExternally) forwardingPlayer else exoPlayer
@@ -204,8 +204,7 @@ abstract class BaseAudioPlayer internal constructor(
         notificationManager = NotificationManager(
             context,
             playerToUse,
-            mediaSession.sessionToken,
-            mediaSessionConnector,
+            mediaSession,
             notificationEventHolder
         )
 
@@ -225,9 +224,9 @@ abstract class BaseAudioPlayer internal constructor(
                         AudioContentType.UNKNOWN -> C.AUDIO_CONTENT_TYPE_UNKNOWN
                     }
                 )
-                .build();
-            exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
-            mediaSessionConnector.setPlayer(playerToUse)
+                .build()
+            exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus)
+            mediaSession.player = playerToUse
         }
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
@@ -286,7 +285,7 @@ abstract class BaseAudioPlayer internal constructor(
             val backBuffer =
                 if (backBuffer != null && backBuffer != 0) backBuffer else DEFAULT_BACK_BUFFER_DURATION_MS
 
-            return Builder()
+            return DefaultLoadControl.Builder()
                 .setBufferDurationsMs(minBuffer, maxBuffer, playBuffer, playBuffer * multiplier)
                 .setBackBuffer(backBuffer, false)
                 .build()
@@ -371,7 +370,7 @@ abstract class BaseAudioPlayer internal constructor(
         exoPlayer.release()
         cache?.release()
         cache = null
-        mediaSession.isActive = false
+        mediaSession.release()
     }
 
     open fun seek(duration: Long, unit: TimeUnit) {
@@ -470,44 +469,44 @@ abstract class BaseAudioPlayer internal constructor(
     }
 
     private fun requestAudioFocus() {
-        if (hasAudioFocus) return
-        Timber.d("Requesting audio focus...")
-
-        val manager = ContextCompat.getSystemService(context, AudioManager::class.java)
-
-        focus = AudioFocusRequestCompat.Builder(AUDIOFOCUS_GAIN)
-            .setOnAudioFocusChangeListener(this)
-            .setAudioAttributes(
-                AudioAttributesCompat.Builder()
-                    .setUsage(USAGE_MEDIA)
-                    .setContentType(CONTENT_TYPE_MUSIC)
-                    .build()
-            )
-            .setWillPauseWhenDucked(playerOptions.alwaysPauseOnInterruption)
-            .build()
-
-        val result: Int = if (manager != null && focus != null) {
-            AudioManagerCompat.requestAudioFocus(manager, focus!!)
-        } else {
-            AudioManager.AUDIOFOCUS_REQUEST_FAILED
-        }
-
-        hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+//        if (hasAudioFocus) return
+//        Timber.d("Requesting audio focus...")
+//
+//        val manager = ContextCompat.getSystemService(context, AudioManager::class.java)
+//
+//        focus = AudioFocusRequestCompat.Builder(AUDIOFOCUS_GAIN)
+//            .setOnAudioFocusChangeListener(this)
+//            .setAudioAttributes(
+//                AudioAttributesCompat.Builder()
+//                    .setUsage(USAGE_MEDIA)
+//                    .setContentType(CONTENT_TYPE_MUSIC)
+//                    .build()
+//            )
+//            .setWillPauseWhenDucked(playerOptions.alwaysPauseOnInterruption)
+//            .build()
+//
+//        val result: Int = if (manager != null && focus != null) {
+//            AudioManagerCompat.requestAudioFocus(manager, focus!!)
+//        } else {
+//            AudioManager.AUDIOFOCUS_REQUEST_FAILED
+//        }
+//
+//        hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
     }
 
     private fun abandonAudioFocusIfHeld() {
-        if (!hasAudioFocus) return
-        Timber.d("Abandoning audio focus...")
-
-        val manager = ContextCompat.getSystemService(context, AudioManager::class.java)
-
-        val result: Int = if (manager != null && focus != null) {
-            AudioManagerCompat.abandonAudioFocusRequest(manager, focus!!)
-        } else {
-            AudioManager.AUDIOFOCUS_REQUEST_FAILED
-        }
-
-        hasAudioFocus = (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+//        if (!hasAudioFocus) return
+//        Timber.d("Abandoning audio focus...")
+//
+//        val manager = ContextCompat.getSystemService(context, AudioManager::class.java)
+//
+//        val result: Int = if (manager != null && focus != null) {
+//            AudioManagerCompat.abandonAudioFocusRequest(manager, focus!!)
+//        } else {
+//            AudioManager.AUDIOFOCUS_REQUEST_FAILED
+//        }
+//
+//        hasAudioFocus = (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
     }
 
     override fun onAudioFocusChange(focusChange: Int) {
