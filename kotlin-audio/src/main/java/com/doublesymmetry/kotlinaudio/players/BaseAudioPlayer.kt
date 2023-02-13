@@ -263,6 +263,10 @@ abstract class BaseAudioPlayer internal constructor(
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.STOP)
             }
 
+            override fun stop(reset: Boolean) {
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.STOP)
+            }
+
             override fun seekTo(positionMs: Long) {
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(
                     MediaSessionCallback.SEEK(
