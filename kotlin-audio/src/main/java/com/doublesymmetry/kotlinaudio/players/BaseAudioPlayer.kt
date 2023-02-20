@@ -325,6 +325,12 @@ abstract class BaseAudioPlayer internal constructor(
         }
     }
 
+    var skipSilence: Boolean
+        get() = exoPlayer.skipSilenceEnabled
+        set(value) {
+            exoPlayer.skipSilenceEnabled = value;
+        }
+
     fun play() {
         exoPlayer.play()
         if (currentItem != null) {
