@@ -1,8 +1,5 @@
 package com.doublesymmetry.kotlinaudio.models
 
-import com.google.android.exoplayer2.C
-import com.doublesymmetry.kotlinaudio.models.AudioContentType
-
 data class PlayerConfig(
     /**
      * Toggle whether or not a player action triggered from an outside source should be intercepted.

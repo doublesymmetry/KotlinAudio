@@ -3,21 +3,20 @@ package com.doublesymmetry.kotlinaudio.notification
 import android.app.Notification
 import android.content.Context
 import android.graphics.Color
-import android.support.v4.media.session.MediaSessionCompat
+import androidx.media3.common.Player
+import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionToken
+import androidx.media3.ui.PlayerNotificationManager
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.models.*
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
-import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 class NotificationManager internal constructor(
     private val context: Context,
     private val player: Player,
-    private val mediaSessionToken: MediaSessionCompat.Token,
-    private val mediaSessionConnector: MediaSessionConnector,
+    private val mediaSession: MediaSession,
     val event: NotificationEventHolder
     ) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: DescriptionAdapter
@@ -213,7 +212,6 @@ class NotificationManager internal constructor(
                 }
             }
 
-            setMediaSessionToken(mediaSessionToken)
             setPlayer(player)
         }
     }
@@ -241,8 +239,8 @@ class NotificationManager internal constructor(
 
     private fun reload() = scope.launch {
         internalNotificationManager?.invalidate()
-        mediaSessionConnector.invalidateMediaSessionQueue()
-        mediaSessionConnector.invalidateMediaSessionMetadata()
+//        mediaSession.invalidateMediaSessionQueue()
+//        mediaSession.invalidateMediaSessionMetadata()
     }
 
     private fun hideAllButtonsByDefault() {
