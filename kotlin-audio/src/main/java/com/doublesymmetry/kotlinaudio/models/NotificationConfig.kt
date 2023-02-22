@@ -5,8 +5,7 @@ import androidx.annotation.DrawableRes
 
 /**
  * Used to configure the player notification.
- * @param buttons Provide customized notification buttons. They will be shown once set. Note that buttons can still be shown and hidden at runtime by using the functions in
- * [NotificationManager][com.doublesymmetry.kotlinaudio.notification.NotificationManager], but they will have the default icon if not set explicitly here.
+ * @param buttons Provide customized notification buttons. They will be shown by default. Note that buttons can still be shown and hidden at runtime by using the functions in [NotificationManager][com.doublesymmetry.kotlinaudio.notification.NotificationManager], but they will have the default icon if not set explicitly here.
  * @param accentColor The accent color of the notification.
  * @param smallIcon The small icon of the notification which is also shown in the system status bar.
  * @param pendingIntent The [PendingIntent] that would be called when tapping on the notification itself.
@@ -19,7 +18,7 @@ data class NotificationConfig(
 )
 
 /**
- * Provide customized notification buttons.
+ * Provide customized notification buttons. They will be shown by default. Note that buttons can still be shown and hidden at runtime by using the functions in [NotificationManager][com.doublesymmetry.kotlinaudio.notification.NotificationManager], but they will have the default icon if not set explicitly here.
  * @see [com.doublesymmetry.kotlinaudio.notification.NotificationManager.showPlayPauseButton]
  * @see [com.doublesymmetry.kotlinaudio.notification.NotificationManager.showStopButton]
  * @see [com.doublesymmetry.kotlinaudio.notification.NotificationManager.showRewindButton]
@@ -39,4 +38,5 @@ sealed class NotificationButton {
     class BACKWARD(@DrawableRes val icon: Int? = null, val isCompact: Boolean = false): NotificationButton()
     class NEXT(@DrawableRes val icon: Int? = null, val isCompact: Boolean = false): NotificationButton()
     class PREVIOUS(@DrawableRes val icon: Int? = null, val isCompact: Boolean = false): NotificationButton()
+    object SEEK_TO : NotificationButton()
 }
