@@ -1,16 +1,6 @@
 package com.doublesymmetry.kotlinaudio.players
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
-import android.os.Bundle
-import android.support.v4.media.MediaDescriptionCompat
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.RatingCompat
-import android.support.v4.media.session.MediaSessionCompat
-import coil.imageLoader
-import coil.request.Disposable
-import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.players.components.getMediaMetadataCompat
 import com.google.android.exoplayer2.C
@@ -22,14 +12,14 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
-class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerConfig(), bufferConfig: BufferConfig? = null, cacheConfig: CacheConfig? = null) : BaseAudioPlayer(context, playerConfig, bufferConfig, cacheConfig) {
+class QueuedAudioPlayer(
+    context: Context,
+    playerConfig: PlayerConfig = PlayerConfig(),
+    bufferConfig: BufferConfig? = null,
+    cacheConfig: CacheConfig? = null
+) : BaseAudioPlayer(context, playerConfig, bufferConfig, cacheConfig) {
     private val queue = LinkedList<MediaSource>()
     override val playerOptions = DefaultQueuedPlayerOptions(exoPlayer)
-
-    init {
-        mediaSessionConnector.setQueueNavigator(KotlinAudioQueueNavigator(mediaSession))
-        mediaSessionConnector.setMetadataDeduplicationEnabled(true)
-    }
 
     val currentIndex
         get() = exoPlayer.currentMediaItemIndex
@@ -229,9 +219,7 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
     fun replaceItem(index: Int, item: AudioItem) {
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue[index] = mediaSource
-
-        if (currentIndex == index && automaticallyUpdateNotificationMetadata)
-            notificationManager.notificationMetadata = NotificationMetadata(item.title, item.artist, item.artwork)
+        notificationManager.invalidate()
     }
 
     /**
@@ -261,52 +249,5 @@ class QueuedAudioPlayer(context: Context, playerConfig: PlayerConfig = PlayerCon
     override fun clear() {
         queue.clear()
         super.clear()
-    }
-
-    private inner class KotlinAudioQueueNavigator(mediaSession: MediaSessionCompat) : TimelineQueueNavigator(mediaSession) {
-        override fun getMediaDescription(player: Player, windowIndex: Int): MediaDescriptionCompat {
-            val isActive = windowIndex == player.currentMediaItemIndex
-            val mediaItem = queue[windowIndex].mediaItem
-            val audioItemHolder = (mediaItem.localConfiguration?.tag as AudioItemHolder)
-            val audioItem = audioItemHolder.audioItem
-            val metadata = mediaItem.mediaMetadata
-            var title = metadata.title ?: audioItem.title
-            var artist = metadata.artist ?: audioItem.artist
-            var artworkUrl = (audioItem.artwork ?: metadata.artworkUri)?.toString()
-            val notificationMetadata = notificationManager.notificationMetadata
-            if (isActive && notificationMetadata != null) {
-                title = notificationMetadata.title ?: title
-                artist = notificationMetadata.artist ?: artist
-                artworkUrl = notificationMetadata.artworkUrl ?: artworkUrl
-            }
-            if (
-                isActive &&
-                artworkUrl != null &&
-                audioItemHolder.artworkBitmap == null
-            ) {
-                context.imageLoader.enqueue(
-                    ImageRequest.Builder(context)
-                        .data(artworkUrl)
-                        .target {
-                            audioItemHolder.artworkBitmap = (it as BitmapDrawable).bitmap
-                            mediaSessionConnector.invalidateMediaSessionQueue()
-                            mediaSessionConnector.invalidateMediaSessionMetadata()
-                        }
-                        .build()
-                )
-            }
-
-            return MediaDescriptionCompat.Builder().apply {
-                setTitle(title)
-                setSubtitle(artist)
-                if (audioItemHolder.artworkBitmap != null) {
-                    setIconBitmap(audioItemHolder.artworkBitmap)
-                }
-                setExtras(Bundle().apply{
-                    putString(MediaMetadataCompat.METADATA_KEY_TITLE, title as String?)
-                    putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist as String?)
-                })
-            }.build()
-        }
     }
 }

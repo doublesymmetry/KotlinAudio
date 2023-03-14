@@ -56,7 +56,6 @@ abstract class BaseAudioPlayer internal constructor(
     private val cacheConfig: CacheConfig?
 ) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
-    private val forwardingPlayer: ForwardingPlayer
 
     private var cache: SimpleCache? = null
     private val scope = MainScope()
@@ -194,19 +193,18 @@ abstract class BaseAudioPlayer internal constructor(
             }
             .build()
 
-        forwardingPlayer = createForwardingPlayer()
-
         mediaSession.isActive = true
 
         val playerToUse =
-            if (playerConfig.interceptPlayerActionsTriggeredExternally) forwardingPlayer else exoPlayer
+            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer
 
         notificationManager = NotificationManager(
             context,
             playerToUse,
-            mediaSession.sessionToken,
+            mediaSession,
             mediaSessionConnector,
-            notificationEventHolder
+            notificationEventHolder,
+            playerEventHolder
         )
 
         exoPlayer.addListener(PlayerListener())
@@ -634,14 +632,6 @@ abstract class BaseAudioPlayer internal constructor(
                 )
                 Player.MEDIA_ITEM_TRANSITION_REASON_SEEK -> playerEventHolder.updateAudioItemTransition(
                     AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM(oldPosition)
-                )
-            }
-
-            if (automaticallyUpdateNotificationMetadata) {
-                notificationManager.notificationMetadata = NotificationMetadata(
-                    currentItem?.title,
-                    currentItem?.artist,
-                    currentItem?.artwork
                 )
             }
         }
