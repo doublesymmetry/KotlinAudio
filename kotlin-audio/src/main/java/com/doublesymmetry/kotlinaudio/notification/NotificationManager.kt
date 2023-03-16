@@ -293,7 +293,7 @@ class NotificationManager internal constructor(
             ) { acc, button ->
                 acc or when (button) {
                     is NotificationButton.PLAY_PAUSE -> {
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE
+                        PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE
                     }
                     is NotificationButton.STOP -> {
                         stopIcon = button.icon ?: stopIcon
