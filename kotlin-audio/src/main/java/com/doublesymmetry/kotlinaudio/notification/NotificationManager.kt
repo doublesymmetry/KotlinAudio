@@ -318,7 +318,7 @@ class NotificationManager internal constructor(
         )
         descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
             override fun getCurrentContentTitle(player: Player): CharSequence {
-                return player.mediaMetadata.displayTitle ?: "nope"
+                return player.mediaMetadata.displayTitle ?: ""
             }
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {
@@ -330,7 +330,7 @@ class NotificationManager internal constructor(
             }
 
             override fun getCurrentSubText(player: Player): CharSequence? {
-                return player.mediaMetadata.displayTitle ?: ""
+                return player.mediaMetadata.displayTitle
             }
 
             override fun getCurrentLargeIcon(
