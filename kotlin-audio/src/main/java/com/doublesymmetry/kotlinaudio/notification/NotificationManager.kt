@@ -293,7 +293,7 @@ class NotificationManager internal constructor(
             ) { acc, button ->
                 acc or when (button) {
                     is NotificationButton.PLAY_PAUSE -> {
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE
+                        PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE
                     }
                     is NotificationButton.STOP -> {
                         stopIcon = button.icon ?: stopIcon
@@ -318,7 +318,7 @@ class NotificationManager internal constructor(
         )
         descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
             override fun getCurrentContentTitle(player: Player): CharSequence {
-                return player.mediaMetadata.displayTitle ?: "nope"
+                return player.mediaMetadata.displayTitle ?: ""
             }
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {
@@ -330,7 +330,7 @@ class NotificationManager internal constructor(
             }
 
             override fun getCurrentSubText(player: Player): CharSequence? {
-                return player.mediaMetadata.displayTitle ?: ""
+                return player.mediaMetadata.displayTitle
             }
 
             override fun getCurrentLargeIcon(
