@@ -226,11 +226,12 @@ class QueuedAudioPlayer(
      * Removes all the upcoming items, if any (the ones returned by [next]).
      */
     fun removeUpcomingItems() {
-        val lastIndex = queue.lastIndex
-        if (lastIndex == -1) return
+        if (queue.lastIndex == -1 || currentIndex == -1) return
+        val lastIndex = queue.lastIndex + 1
+        val fromIndex = currentIndex + 1
 
-        exoPlayer.removeMediaItems(currentIndex, lastIndex)
-        queue.subList(currentIndex, lastIndex).clear()
+        exoPlayer.removeMediaItems(fromIndex, lastIndex)
+        queue.subList(fromIndex, lastIndex).clear()
     }
 
     /**

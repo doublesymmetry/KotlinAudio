@@ -177,9 +177,48 @@ class QueuedAudioPlayerTest {
             runBlocking(Dispatchers.Main) {
                 testPlayer.add(tracks[0])
                 testPlayer.add(tracks[1])
+                assertEquals(testPlayer.currentItem?.audioUrl, tracks[0].audioUrl)
                 testPlayer.removeUpcomingItems()
+                assertEquals(testPlayer.nextItems.size, 0)
+                assertEquals(testPlayer.items.size, 1)
+                assertEquals(testPlayer.currentItem?.title, tracks[0].title)
+            }
 
-                assertTrue(testPlayer.nextItems.isEmpty())
+        @Test
+        fun givenAddedTwoItemsAndJumpingToSecondRemovingUpcomingItems_thenShouldBeEmpty() =
+            runBlocking(Dispatchers.Main) {
+                testPlayer.add(tracks[0])
+                testPlayer.add(tracks[1])
+                testPlayer.jumpToItem(1)
+                testPlayer.removeUpcomingItems()
+                assertEquals(testPlayer.nextItems.size, 0)
+                assertEquals(testPlayer.items.size, 2)
+                assertEquals(testPlayer.currentItem?.title, tracks[1].title)
+            }
+
+        @Test
+        fun givenAddedThreeItemsRemovingUpcomingItems_thenShouldBeEmpty() =
+            runBlocking(Dispatchers.Main) {
+                testPlayer.add(tracks[0])
+                testPlayer.add(tracks[1])
+                testPlayer.add(tracks[2])
+                testPlayer.removeUpcomingItems()
+                assertEquals(testPlayer.nextItems.size, 0)
+                assertEquals(testPlayer.items.size, 1)
+                assertEquals(testPlayer.currentItem?.title, tracks[0].title)
+            }
+
+        @Test
+        fun givenAddedThreeItemsAndSkippingToSecondAndRemovingUpcomingItems_thenShouldBeEmpty() =
+            runBlocking(Dispatchers.Main) {
+                testPlayer.add(tracks[0])
+                testPlayer.add(tracks[1])
+                testPlayer.add(tracks[2])
+                testPlayer.jumpToItem(1)
+                testPlayer.removeUpcomingItems()
+                assertEquals(testPlayer.nextItems.size, 0)
+                assertEquals(testPlayer.items.size, 2)
+                assertEquals(testPlayer.currentItem?.title, tracks[1].title)
             }
 
         @Test
