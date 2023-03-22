@@ -256,8 +256,23 @@ class NotificationManager internal constructor(
             )
         }
 
-        override fun getCustomActions(player: Player): MutableList<String> {
-            return mutableListOf(STOP, REWIND, FORWARD)
+        override fun getCustomActions(player: Player): List<String> {
+            return buttons.mapNotNull {
+                when (it) {
+                    is NotificationButton.STOP -> {
+                        STOP
+                    }
+                    is NotificationButton.FORWARD -> {
+                        FORWARD
+                    }
+                    is NotificationButton.BACKWARD -> {
+                        REWIND
+                    }
+                    else -> {
+                        null
+                    }
+                }
+            }
         }
 
         override fun onCustomAction(player: Player, action: String, intent: Intent) {
