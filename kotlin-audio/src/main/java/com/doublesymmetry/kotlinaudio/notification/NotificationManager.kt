@@ -51,10 +51,8 @@ class NotificationManager internal constructor(
         set(value) {
             // Clear bitmap cache if artwork changes
             if (field?.artworkUrl != value?.artworkUrl) {
-                val itemHolder =
-                    player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
-                if (itemHolder != null) {
-                    itemHolder.artworkBitmap = null
+                if (currentItemHolder != null) {
+                    currentItemHolder.artworkBitmap = null
                 }
             }
             field = value
@@ -157,6 +155,11 @@ class NotificationManager internal constructor(
     var forwardIcon: Int? = null
     var rewindIcon: Int? = null
 
+    private val currentItemHolder get() =  (
+            player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder
+    )
+
+
     init {
         mediaSessionConnector.setQueueNavigator(
             object : TimelineQueueNavigator(mediaSession) {
@@ -180,10 +183,12 @@ class NotificationManager internal constructor(
                     player: Player,
                     windowIndex: Int
                 ): MediaDescriptionCompat {
+                    val currentNotificationMetadata = if (windowIndex == player.currentMediaItemIndex)
+                        notificationMetadata else null
                     val mediaItem = player.getMediaItemAt(windowIndex)
                     val audioItemHolder = (mediaItem.localConfiguration?.tag as AudioItemHolder)
-                    var title = mediaItem.mediaMetadata.title ?: audioItemHolder.audioItem.title
-                    var artist = mediaItem.mediaMetadata.artist ?: audioItemHolder.audioItem.artist
+                    var title = currentNotificationMetadata?.title ?: mediaItem.mediaMetadata.title ?: audioItemHolder.audioItem.title
+                    var artist = currentNotificationMetadata?.artist ?: mediaItem.mediaMetadata.artist ?: audioItemHolder.audioItem.artist
                     return MediaDescriptionCompat.Builder().apply {
                         setTitle(title)
                         setSubtitle(artist)
@@ -318,7 +323,7 @@ class NotificationManager internal constructor(
         )
         descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
             override fun getCurrentContentTitle(player: Player): CharSequence {
-                return (player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder).audioItem.title
+                return notificationMetadata?.title
                     ?: player.mediaMetadata.title
                     ?: ""
             }
@@ -328,7 +333,7 @@ class NotificationManager internal constructor(
             }
 
             override fun getCurrentContentText(player: Player): CharSequence? {
-                return (player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder).audioItem.artist
+                return notificationMetadata?.artist
                     ?: player.mediaMetadata.artist
                     ?: player.mediaMetadata.albumArtist
                     ?: ""
@@ -342,33 +347,32 @@ class NotificationManager internal constructor(
                 player: Player,
                 callback: PlayerNotificationManager.BitmapCallback,
             ): Bitmap? {
-                val itemHolder =
-                    player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
-                        ?: return null
-                val source = itemHolder.audioItem.artwork ?: player.mediaMetadata.artworkUri
+                val source = notificationMetadata?.artworkUrl ?: player.mediaMetadata.artworkUri
                 val data = player.mediaMetadata.artworkData
 
-                if (itemHolder.audioItem.artwork == null && data != null) {
+                if (notificationMetadata?.artworkUrl == null && data != null) {
                     return BitmapFactory.decodeByteArray(data, 0, data.size)
                 }
 
                 if (source == null) {
                     return null
                 }
-                if (itemHolder.artworkBitmap != null) {
-                    return itemHolder.artworkBitmap
+
+                if (currentItemHolder.artworkBitmap != null) {
+                    return currentItemHolder.artworkBitmap
                 }
+
                 context.imageLoader.enqueue(
                     ImageRequest.Builder(context)
                         .data(source)
                         .target { result ->
                             val bitmap = (result as BitmapDrawable).bitmap
-                            itemHolder.artworkBitmap = bitmap
+                            currentItemHolder.artworkBitmap = bitmap
                             callback.onBitmap(bitmap)
                         }
                         .build()
                 )
-                return itemHolder.artworkBitmap
+                return currentItemHolder.artworkBitmap
             }
         }
 

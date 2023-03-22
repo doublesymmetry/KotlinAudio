@@ -2,11 +2,8 @@ package com.doublesymmetry.kotlinaudio.players
 
 import android.content.Context
 import com.doublesymmetry.kotlinaudio.models.*
-import com.doublesymmetry.kotlinaudio.players.components.getMediaMetadataCompat
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.IllegalSeekPositionException
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.source.MediaSource
 import java.util.*
 import kotlin.math.max
@@ -219,7 +216,9 @@ class QueuedAudioPlayer(
     fun replaceItem(index: Int, item: AudioItem) {
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue[index] = mediaSource
-        notificationManager.invalidate()
+        if (index == currentIndex) {
+            updateNotificationMetadataIfAutomatic()
+        }
     }
 
     /**
