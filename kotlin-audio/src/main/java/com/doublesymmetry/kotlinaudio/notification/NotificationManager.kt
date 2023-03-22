@@ -318,7 +318,9 @@ class NotificationManager internal constructor(
         )
         descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
             override fun getCurrentContentTitle(player: Player): CharSequence {
-                return player.mediaMetadata.displayTitle ?: ""
+                return (player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder).audioItem.title
+                    ?: player.mediaMetadata.title
+                    ?: ""
             }
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {
@@ -326,7 +328,10 @@ class NotificationManager internal constructor(
             }
 
             override fun getCurrentContentText(player: Player): CharSequence? {
-                return player.mediaMetadata.artist ?: player.mediaMetadata.albumArtist
+                return (player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder).audioItem.artist
+                    ?: player.mediaMetadata.artist
+                    ?: player.mediaMetadata.albumArtist
+                    ?: ""
             }
 
             override fun getCurrentSubText(player: Player): CharSequence? {
@@ -340,10 +345,10 @@ class NotificationManager internal constructor(
                 val itemHolder =
                     player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
                         ?: return null
+                val source = itemHolder.audioItem.artwork ?: player.mediaMetadata.artworkUri
                 val data = player.mediaMetadata.artworkData
-                val source = player.mediaMetadata.artworkUri ?: itemHolder.audioItem.artwork
 
-                if (data != null) {
+                if (itemHolder.audioItem.artwork == null && data != null) {
                     return BitmapFactory.decodeByteArray(data, 0, data.size)
                 }
 
