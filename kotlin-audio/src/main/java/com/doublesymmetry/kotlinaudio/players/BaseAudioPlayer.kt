@@ -6,7 +6,6 @@ import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
 import android.os.Bundle
 import android.os.ResultReceiver
-import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.CallSuper
@@ -23,7 +22,6 @@ import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.notification.NotificationManager
 import com.doublesymmetry.kotlinaudio.players.components.PlayerCache
-import com.doublesymmetry.kotlinaudio.players.components.getMediaMetadataCompat
 import com.doublesymmetry.kotlinaudio.utils.isUriLocal
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.DefaultLoadControl.*
@@ -280,6 +278,16 @@ abstract class BaseAudioPlayer internal constructor(
                     )
                 )
             }
+        }
+    }
+
+    internal fun updateNotificationMetadataIfAutomatic() {
+        if (automaticallyUpdateNotificationMetadata) {
+            notificationManager.notificationMetadata = NotificationMetadata(
+                currentItem?.title,
+                currentItem?.artist,
+                currentItem?.artwork
+            )
         }
     }
 
@@ -634,6 +642,8 @@ abstract class BaseAudioPlayer internal constructor(
                     AudioItemTransitionReason.SEEK_TO_ANOTHER_AUDIO_ITEM(oldPosition)
                 )
             }
+
+            updateNotificationMetadataIfAutomatic()
         }
 
         /**
