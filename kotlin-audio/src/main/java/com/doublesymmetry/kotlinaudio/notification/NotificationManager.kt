@@ -51,8 +51,9 @@ class NotificationManager internal constructor(
         set(value) {
             // Clear bitmap cache if artwork changes
             if (field?.artworkUrl != value?.artworkUrl) {
-                if (currentItemHolder != null) {
-                    currentItemHolder.artworkBitmap = null
+                val holder = currentItemHolder
+                if (holder != null) {
+                    holder.artworkBitmap = null
                 }
             }
             field = value
@@ -156,7 +157,7 @@ class NotificationManager internal constructor(
     var rewindIcon: Int? = null
 
     private val currentItemHolder get() =  (
-            player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder
+            player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
     )
 
 
@@ -362,6 +363,7 @@ class NotificationManager internal constructor(
                 player: Player,
                 callback: PlayerNotificationManager.BitmapCallback,
             ): Bitmap? {
+                val holder = currentItemHolder ?: return null
                 val source = notificationMetadata?.artworkUrl ?: player.mediaMetadata.artworkUri
                 val data = player.mediaMetadata.artworkData
 
@@ -373,8 +375,8 @@ class NotificationManager internal constructor(
                     return null
                 }
 
-                if (currentItemHolder.artworkBitmap != null) {
-                    return currentItemHolder.artworkBitmap
+                if (holder.artworkBitmap != null) {
+                    return holder.artworkBitmap
                 }
 
                 context.imageLoader.enqueue(
@@ -382,12 +384,12 @@ class NotificationManager internal constructor(
                         .data(source)
                         .target { result ->
                             val bitmap = (result as BitmapDrawable).bitmap
-                            currentItemHolder.artworkBitmap = bitmap
+                            holder.artworkBitmap = bitmap
                             callback.onBitmap(bitmap)
                         }
                         .build()
                 )
-                return currentItemHolder.artworkBitmap
+                return holder.artworkBitmap
             }
         }
 
