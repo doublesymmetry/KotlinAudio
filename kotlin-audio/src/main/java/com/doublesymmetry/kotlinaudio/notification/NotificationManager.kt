@@ -51,7 +51,7 @@ class NotificationManager internal constructor(
         set(value) {
             // Clear bitmap cache if artwork changes
             if (field?.artworkUrl != value?.artworkUrl) {
-                val holder = currentItemHolder
+                val holder = getCurrentItemHolder()
                 if (holder != null) {
                     holder.artworkBitmap = null
                 }
@@ -156,10 +156,9 @@ class NotificationManager internal constructor(
     var forwardIcon: Int? = null
     var rewindIcon: Int? = null
 
-    private val currentItemHolder get() =  (
-            player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
-    )
-
+    private fun getCurrentItemHolder(): AudioItemHolder? {
+        return player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
+    }
 
     init {
         mediaSessionConnector.setQueueNavigator(
@@ -363,7 +362,7 @@ class NotificationManager internal constructor(
                 player: Player,
                 callback: PlayerNotificationManager.BitmapCallback,
             ): Bitmap? {
-                val holder = currentItemHolder ?: return null
+                val holder = getCurrentItemHolder() ?: return null
                 val source = notificationMetadata?.artworkUrl ?: player.mediaMetadata.artworkUri
                 val data = player.mediaMetadata.artworkData
 
