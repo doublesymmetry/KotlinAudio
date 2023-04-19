@@ -157,7 +157,7 @@ class NotificationManager internal constructor(
     var rewindIcon: Int? = null
 
     private fun getCurrentItemHolder(): AudioItemHolder? {
-        return player.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
+        return player?.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
     }
 
     init {
