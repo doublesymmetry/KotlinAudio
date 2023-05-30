@@ -300,9 +300,13 @@ class NotificationManager internal constructor(
     /**
      * Create a media player notification that automatically updates.
      *
-     * **NOTE:** You should only call this once. Subsequent calls will result in an error.
      */
     fun createNotification(config: NotificationConfig) = scope.launch {
+        if(internalNotificationManager != null){
+            hideNotification() // reset media player notification
+            delay(200) // minimum delay to reset and repopulate the media player notification
+        }
+
         buttons.apply {
             clear()
             addAll(config.buttons)
