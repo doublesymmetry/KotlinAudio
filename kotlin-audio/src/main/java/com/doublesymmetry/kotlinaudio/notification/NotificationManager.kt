@@ -32,8 +32,19 @@ import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import java.util.Timer
+import java.util.TimerTask
 
 class NotificationManager internal constructor(
     private val context: Context,
@@ -41,12 +52,19 @@ class NotificationManager internal constructor(
     private val mediaSession: MediaSessionCompat,
     private val mediaSessionConnector: MediaSessionConnector,
     val event: NotificationEventHolder,
-    val playerEventHolder: PlayerEventHolder
+    private val playerEventHolder: PlayerEventHolder,
+    private val androidNotificationDebounceInterval: Long
 ) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter
     private var internalNotificationManager: PlayerNotificationManager? = null
     private val scope = MainScope()
     private val buttons = mutableSetOf<NotificationButton?>()
+    private val notificationMetadataFlow = MutableSharedFlow<NotificationMetadata?>(
+        extraBufferCapacity = 10,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    private var invalidateJob: Job? = null
+
     var notificationMetadata: NotificationMetadata? = null
         set(value) {
             // Clear bitmap cache if artwork changes
@@ -57,7 +75,7 @@ class NotificationManager internal constructor(
                 }
             }
             field = value
-            invalidate()
+            notificationMetadataFlow.tryEmit(field)
         }
 
     var showPlayPauseButton = false
@@ -169,9 +187,11 @@ class NotificationManager internal constructor(
                             is NotificationButton.NEXT -> {
                                 PlaybackStateCompat.ACTION_SKIP_TO_NEXT
                             }
+
                             is NotificationButton.PREVIOUS -> {
                                 PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
                             }
+
                             else -> {
                                 0
                             }
@@ -204,7 +224,28 @@ class NotificationManager internal constructor(
                 }
             }
         )
+        scope.launch {
+            // Debounce for Android rate limits when updating a notification
+            // https://developer.android.com/develop/ui/views/notifications#limits
+            notificationMetadataFlow.debounce(androidNotificationDebounceInterval)
+                .distinctUntilChanged()
+                .collectLatest {
+                    invalidate()
+                    updateInvalidateTimer()
+                }
+        }
+
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
+    }
+
+    private fun updateInvalidateTimer() {
+        invalidateJob?.cancel()
+        invalidateJob = scope.launch {
+            flow<Unit> {
+                delay(NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE)
+                invalidate()
+            }.collect()
+        }
     }
 
     private fun createNotificationAction(
@@ -231,9 +272,11 @@ class NotificationManager internal constructor(
             REWIND -> {
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.REWIND)
             }
+
             FORWARD -> {
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.FORWARD)
             }
+
             STOP -> {
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.STOP)
             }
@@ -273,12 +316,15 @@ class NotificationManager internal constructor(
                     is NotificationButton.BACKWARD -> {
                         REWIND
                     }
+
                     is NotificationButton.FORWARD -> {
                         FORWARD
                     }
+
                     is NotificationButton.STOP -> {
                         STOP
                     }
+
                     else -> {
                         null
                     }
@@ -321,21 +367,26 @@ class NotificationManager internal constructor(
                     is NotificationButton.PLAY_PAUSE -> {
                         PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE
                     }
+
                     is NotificationButton.BACKWARD -> {
                         rewindIcon = button.icon ?: rewindIcon
                         PlaybackStateCompat.ACTION_REWIND
                     }
+
                     is NotificationButton.FORWARD -> {
                         forwardIcon = button.icon ?: forwardIcon
                         PlaybackStateCompat.ACTION_FAST_FORWARD
                     }
+
                     is NotificationButton.SEEK_TO -> {
                         PlaybackStateCompat.ACTION_SEEK_TO
                     }
+
                     is NotificationButton.STOP -> {
                         stopIcon = button.icon ?: stopIcon
                         PlaybackStateCompat.ACTION_STOP
                     }
+
                     else -> {
                         0
                     }
@@ -413,12 +464,15 @@ class NotificationManager internal constructor(
                         is NotificationButton.BACKWARD -> {
                             createMediaSessionAction(rewindIcon ?: DEFAULT_REWIND_ICON, REWIND)
                         }
+
                         is NotificationButton.FORWARD -> {
                             createMediaSessionAction(forwardIcon ?: DEFAULT_FORWARD_ICON, FORWARD)
                         }
+
                         is NotificationButton.STOP -> {
                             createMediaSessionAction(stopIcon ?: DEFAULT_STOP_ICON, STOP)
                         }
+
                         else -> {
                             null
                         }
@@ -451,31 +505,37 @@ class NotificationManager internal constructor(
                                 button.playIcon?.let { setPlayActionIconResourceId(it) }
                                 button.pauseIcon?.let { setPauseActionIconResourceId(it) }
                             }
+
                             is NotificationButton.STOP -> button.icon?.let {
                                 setStopActionIconResourceId(
                                     it
                                 )
                             }
+
                             is NotificationButton.FORWARD -> button.icon?.let {
                                 setFastForwardActionIconResourceId(
                                     it
                                 )
                             }
+
                             is NotificationButton.BACKWARD -> button.icon?.let {
                                 setRewindActionIconResourceId(
                                     it
                                 )
                             }
+
                             is NotificationButton.NEXT -> button.icon?.let {
                                 setNextActionIconResourceId(
                                     it
                                 )
                             }
+
                             is NotificationButton.PREVIOUS -> button.icon?.let {
                                 setPreviousActionIconResourceId(
                                     it
                                 )
                             }
+
                             else -> {}
                         }
                     }
@@ -488,25 +548,31 @@ class NotificationManager internal constructor(
                             is NotificationButton.PLAY_PAUSE -> {
                                 showPlayPauseButton = true
                             }
+
                             is NotificationButton.STOP -> {
                                 showStopButton = true
                             }
+
                             is NotificationButton.FORWARD -> {
                                 showForwardButton = true
                                 showForwardButtonCompact = button.isCompact
                             }
+
                             is NotificationButton.BACKWARD -> {
                                 showRewindButton = true
                                 showRewindButtonCompact = button.isCompact
                             }
+
                             is NotificationButton.NEXT -> {
                                 showNextButton = true
                                 showNextButtonCompact = button.isCompact
                             }
+
                             is NotificationButton.PREVIOUS -> {
                                 showPreviousButton = true
                                 showPreviousButtonCompact = button.isCompact
                             }
+
                             else -> {}
                         }
                     }
@@ -577,5 +643,7 @@ class NotificationManager internal constructor(
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_rewind
         private val DEFAULT_FORWARD_ICON =
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_fastforward
+
+        private const val NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE = 1000L
     }
 }
