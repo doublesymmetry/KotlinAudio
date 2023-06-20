@@ -76,7 +76,7 @@ afterEvaluate {
                 artifact sourcesJar
 
                 // You can then customize attributes of the publication as shown below.
-                groupId = 'com.monstarlab.hungtqb'
+                groupId = 'io.github.mvn-hungtruong-dn'
                 artifactId = 'kotlin-audio'
                 version = versionNumber
             }
