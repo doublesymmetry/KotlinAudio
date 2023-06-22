@@ -32,19 +32,14 @@ import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import java.util.Timer
-import java.util.TimerTask
 
 class NotificationManager internal constructor(
     private val context: Context,
@@ -63,7 +58,6 @@ class NotificationManager internal constructor(
         extraBufferCapacity = 10,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
     )
-    private var invalidateJob: Job? = null
 
     var notificationMetadata: NotificationMetadata? = null
         set(value) {
@@ -229,23 +223,14 @@ class NotificationManager internal constructor(
             // https://developer.android.com/develop/ui/views/notifications#limits
             notificationMetadataFlow.debounce(androidNotificationDebounceInterval)
                 .distinctUntilChanged()
-                .collectLatest {
+                .onEach {
                     invalidate()
-                    updateInvalidateTimer()
-                }
+                }.debounce(NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE).onEach {
+                    invalidate()
+                }.collect()
         }
 
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
-    }
-
-    private fun updateInvalidateTimer() {
-        invalidateJob?.cancel()
-        invalidateJob = scope.launch {
-            flow<Unit> {
-                delay(NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE)
-                invalidate()
-            }.collect()
-        }
     }
 
     private fun createNotificationAction(
