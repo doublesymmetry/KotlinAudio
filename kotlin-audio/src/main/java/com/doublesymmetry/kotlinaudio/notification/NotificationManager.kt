@@ -18,6 +18,7 @@ import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import coil.imageLoader
 import coil.request.ImageRequest
+import jp.wasabeef.transformers.coil.CropSquareTransformation
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
@@ -387,6 +388,7 @@ class NotificationManager internal constructor(
                 context.imageLoader.enqueue(
                     ImageRequest.Builder(context)
                         .data(source)
+                        .transformations(CropSquareTransformation())
                         .target { result ->
                             val bitmap = (result as BitmapDrawable).bitmap
                             holder.artworkBitmap = bitmap
