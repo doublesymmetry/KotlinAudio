@@ -28,6 +28,7 @@ fun MediaSource.getMediaMetadataCompat(): MediaMetadataCompat {
 
         if (artwork != null) {
             putString(MediaMetadataCompat.METADATA_KEY_ART_URI, artwork.toString())
+            putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, artwork.toString())
         }
 
         if (rating != null) {
