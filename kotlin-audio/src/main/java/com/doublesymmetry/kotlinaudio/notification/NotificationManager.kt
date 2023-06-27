@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaDescriptionCompat
@@ -201,6 +202,8 @@ class NotificationManager internal constructor(
                             putString(MediaMetadataCompat.METADATA_KEY_TITLE, title as String?)
                             putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist as String?)
                         })
+                        setIconUri(mediaItem.mediaMetadata.artworkUri ?: Uri.parse(audioItemHolder.audioItem.artwork))
+                        setIconBitmap(audioItemHolder.artworkBitmap)
                     }.build()
                 }
             }
