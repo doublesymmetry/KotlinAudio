@@ -1,16 +1,11 @@
 package com.doublesymmetry.kotlinaudio.players
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.ImageDecoder
 import android.media.AudioManager
 import android.media.AudioManager.AUDIOFOCUS_LOSS
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.ResultReceiver
-import android.provider.MediaStore
-import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.annotation.CallSuper
@@ -338,7 +333,6 @@ abstract class BaseAudioPlayer internal constructor(
         val mediaSource = getMediaSourceFromAudioItem(item)
         exoPlayer.addMediaSource(mediaSource)
         exoPlayer.prepare()
-        mediaSession.setMetadata(audioItemToMediaMetadataCompat(item))
     }
 
     fun togglePlaying() {
@@ -418,30 +412,7 @@ abstract class BaseAudioPlayer internal constructor(
         exoPlayer.seekTo(positionMs)
     }
 
-    private fun loadBitmapFromURI(uri: String): Bitmap? {
-        return  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, Uri.parse(uri)))
-        } else {
-            MediaStore.Images.Media.getBitmap(context.contentResolver, Uri.parse(uri))
-        }
-    }
-
-    private fun audioItemToMediaMetadataCompat(audioItem: AudioItem): MediaMetadataCompat {
-        return MediaMetadataCompat.Builder().apply {
-            putString(MediaMetadataCompat.METADATA_KEY_ARTIST, audioItem.artist?.toString())
-            putString(MediaMetadataCompat.METADATA_KEY_TITLE, audioItem.title?.toString())
-            putString(MediaMetadataCompat.METADATA_KEY_ALBUM, audioItem.albumTitle?.toString())
-            putLong(MediaMetadataCompat.METADATA_KEY_DURATION, audioItem.duration ?: -1)
-
-            if (audioItem.artwork != null) {
-                putString(MediaMetadataCompat.METADATA_KEY_ART_URI, audioItem.artwork.toString())
-                putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, loadBitmapFromURI(audioItem.artwork.toString()))
-            }
-        }.build()
-    }
-
     private fun getMediaItemFromAudioItem(audioItem: AudioItem): MediaItem {
-
         return MediaItem.Builder().setUri(audioItem.audioUrl).setTag(AudioItemHolder(audioItem)).build()
     }
 
