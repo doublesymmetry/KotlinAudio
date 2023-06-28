@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 class NotificationManager internal constructor(
     private val context: Context,
@@ -218,15 +219,21 @@ class NotificationManager internal constructor(
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
 
         scope.launch {
+            val isFirstItemDebounceConsumed = AtomicBoolean(false)
             // Debounce for Android rate limits when updating a notification
             // https://developer.android.com/develop/ui/views/notifications#limits
-            notificationMetadataFlow.debounce(androidNotificationDebounceInterval)
-                .distinctUntilChanged()
-                .onEach {
-                    invalidate()
-                }.debounce(NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE).collectLatest {
-                    invalidate()
+            notificationMetadataFlow.debounce {
+                if (!isFirstItemDebounceConsumed.getAndSet(true)) {
+                    0L
+                } else {
+                    androidNotificationDebounceInterval
                 }
+            }.distinctUntilChanged().onEach {
+                invalidate()
+            }.debounce(NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE).collectLatest {
+                invalidate()
+                isFirstItemDebounceConsumed.set(false)
+            }
         }
     }
 
