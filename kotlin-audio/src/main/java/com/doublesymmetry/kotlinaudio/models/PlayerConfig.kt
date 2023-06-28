@@ -1,7 +1,6 @@
 package com.doublesymmetry.kotlinaudio.models
 
-import com.google.android.exoplayer2.C
-import com.doublesymmetry.kotlinaudio.models.AudioContentType
+import com.doublesymmetry.kotlinaudio.players.BaseAudioPlayer
 
 data class PlayerConfig(
     /**
@@ -30,5 +29,14 @@ data class PlayerConfig(
     /**
      * The audio content type.
      */
-    val audioContentType: AudioContentType = AudioContentType.MUSIC
+    val audioContentType: AudioContentType = AudioContentType.MUSIC,
+
+    /**
+     * Debounce interval for updating notification UI
+     *
+     * Android applies a rate limit when updating a notification (Default is 5 times per second)
+     *
+     * This flag will reduce the update rate when user interact with the notification consecutively
+     */
+    val androidNotificationDebounceInterval: Long = BaseAudioPlayer.ANDROID_NOTIFICATION_UPDATE_DEBOUNCE_INTERVAL
 )

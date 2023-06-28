@@ -33,6 +33,12 @@ import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 class NotificationManager internal constructor(
@@ -41,12 +47,17 @@ class NotificationManager internal constructor(
     private val mediaSession: MediaSessionCompat,
     private val mediaSessionConnector: MediaSessionConnector,
     val event: NotificationEventHolder,
-    val playerEventHolder: PlayerEventHolder
+    val playerEventHolder: PlayerEventHolder,
+    private val androidNotificationDebounceInterval: Long
 ) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter
     private var internalNotificationManager: PlayerNotificationManager? = null
     private val scope = MainScope()
     private val buttons = mutableSetOf<NotificationButton?>()
+    private val notificationMetadataFlow = MutableSharedFlow<NotificationMetadata?>(
+        extraBufferCapacity = 10,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     var notificationMetadata: NotificationMetadata? = null
         set(value) {
             // Clear bitmap cache if artwork changes
@@ -57,7 +68,7 @@ class NotificationManager internal constructor(
                 }
             }
             field = value
-            invalidate()
+            notificationMetadataFlow.tryEmit(field)
         }
 
     var showPlayPauseButton = false
@@ -205,6 +216,18 @@ class NotificationManager internal constructor(
             }
         )
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
+
+        scope.launch {
+            // Debounce for Android rate limits when updating a notification
+            // https://developer.android.com/develop/ui/views/notifications#limits
+            notificationMetadataFlow.debounce(androidNotificationDebounceInterval)
+                .distinctUntilChanged()
+                .onEach {
+                    invalidate()
+                }.debounce(NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE).collectLatest {
+                    invalidate()
+                }
+        }
     }
 
     private fun createNotificationAction(
@@ -577,5 +600,7 @@ class NotificationManager internal constructor(
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_rewind
         private val DEFAULT_FORWARD_ICON =
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_fastforward
+
+        private const val NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE = 1000L
     }
 }
