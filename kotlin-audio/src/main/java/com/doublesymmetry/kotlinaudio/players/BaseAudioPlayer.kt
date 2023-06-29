@@ -677,7 +677,9 @@ abstract class BaseAudioPlayer internal constructor(
                                     null
                                 else
                                     AudioPlayerState.IDLE
-                            Player.STATE_ENDED -> AudioPlayerState.ENDED
+                            Player.STATE_ENDED ->
+                                if (player.mediaItemCount > 0) AudioPlayerState.ENDED
+                                else AudioPlayerState.IDLE
                             else -> null // noop
                         }
                         if (state != null && state != playerState) {

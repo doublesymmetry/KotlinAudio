@@ -879,6 +879,15 @@ class QueuedAudioPlayerTest {
                 assertEquals(0, testPlayer.currentIndex)
                 assertEquals(null, testPlayer.currentItem)
             }
+
+        @Test
+        fun givenAddedThreeItemsAndDeletingAll_thenPlayerStateShouldBecomeIDLE() =
+            runBlocking(Dispatchers.Main) {
+                testPlayer.remove(listOf(0, 1, 2))
+                eventually(Duration.ofSeconds(30), Dispatchers.Main, fun () {
+                    assertEquals(AudioPlayerState.IDLE, testPlayer.playerState)
+                });
+            }
     }
 
     @Nested
