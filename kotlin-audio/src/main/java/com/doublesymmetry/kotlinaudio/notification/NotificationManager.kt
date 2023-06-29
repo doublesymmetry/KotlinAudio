@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
@@ -693,8 +694,8 @@ class NotificationManager internal constructor(
             internalNotificationManager?.setPlayer(null)
             internalNotificationManager = null
             invalidate()
-            delay(1000L)
-        }
+            delay(500L)
+        }.collect()
     }
 
     override fun onNotificationPosted(
