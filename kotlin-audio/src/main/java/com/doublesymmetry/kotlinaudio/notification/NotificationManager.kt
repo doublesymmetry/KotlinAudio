@@ -19,6 +19,7 @@ import androidx.core.app.NotificationCompat
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.R
+import com.doublesymmetry.kotlinaudio.utils.throttle
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
 import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
@@ -48,7 +49,7 @@ class NotificationManager internal constructor(
     private val mediaSessionConnector: MediaSessionConnector,
     val event: NotificationEventHolder,
     val playerEventHolder: PlayerEventHolder,
-    private val androidNotificationDebounceInterval: Long
+    private val androidNotificationThrottleInterval: Long
 ) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter
     private var internalNotificationManager: PlayerNotificationManager? = null
@@ -218,13 +219,13 @@ class NotificationManager internal constructor(
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
 
         scope.launch {
-            // Debounce for Android rate limits when updating a notification
+            // Throttle for Android rate limits when updating a notification
             // https://developer.android.com/develop/ui/views/notifications#limits
-            notificationMetadataFlow.debounce(androidNotificationDebounceInterval)
+            notificationMetadataFlow.throttle(androidNotificationThrottleInterval)
                 .distinctUntilChanged()
                 .onEach {
                     invalidate()
-                }.debounce(NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE).collectLatest {
+                }.debounce(NOTIFICATION_UPDATE_DELAY_AFTER_THROTTLE).collectLatest {
                     invalidate()
                 }
         }
@@ -601,6 +602,6 @@ class NotificationManager internal constructor(
         private val DEFAULT_FORWARD_ICON =
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_fastforward
 
-        private const val NOTIFICATION_UPDATE_DELAY_AFTER_DEBOUNCE = 1000L
+        private const val NOTIFICATION_UPDATE_DELAY_AFTER_THROTTLE = 1000L
     }
 }

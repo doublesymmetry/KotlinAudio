@@ -234,7 +234,7 @@ abstract class BaseAudioPlayer internal constructor(
             mediaSessionConnector,
             notificationEventHolder,
             playerEventHolder,
-            playerConfig.androidNotificationDebounceInterval
+            playerConfig.androidNotificationThrottleInterval
         )
 
         exoPlayer.addListener(PlayerListener())
@@ -593,7 +593,7 @@ abstract class BaseAudioPlayer internal constructor(
 
     companion object {
         const val APPLICATION_NAME = "react-native-track-player"
-        const val ANDROID_NOTIFICATION_UPDATE_DEBOUNCE_INTERVAL = 300L
+        const val ANDROID_NOTIFICATION_UPDATE_THROTTLE_INTERVAL = 300L
     }
 
     inner class PlayerListener : Listener {

@@ -32,11 +32,11 @@ data class PlayerConfig(
     val audioContentType: AudioContentType = AudioContentType.MUSIC,
 
     /**
-     * Debounce interval for updating notification UI
+     * Throttle interval for updating notification UI
      *
      * Android applies a rate limit when updating a notification (Default is 5 times per second)
      *
      * This flag will reduce the update rate when user interact with the notification consecutively
      */
-    val androidNotificationDebounceInterval: Long = BaseAudioPlayer.ANDROID_NOTIFICATION_UPDATE_DEBOUNCE_INTERVAL
+    val androidNotificationThrottleInterval: Long = BaseAudioPlayer.ANDROID_NOTIFICATION_UPDATE_THROTTLE_INTERVAL
 )
