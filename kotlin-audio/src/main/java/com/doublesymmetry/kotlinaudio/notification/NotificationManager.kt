@@ -19,7 +19,6 @@ import androidx.core.app.NotificationCompat
 import coil.imageLoader
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.R
-import com.doublesymmetry.kotlinaudio.utils.throttle
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
 import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
@@ -28,12 +27,17 @@ import com.doublesymmetry.kotlinaudio.models.NotificationButton
 import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.NotificationState
+import com.doublesymmetry.kotlinaudio.players.BaseAudioPlayer
+import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -48,13 +52,13 @@ class NotificationManager internal constructor(
     private val mediaSession: MediaSessionCompat,
     private val mediaSessionConnector: MediaSessionConnector,
     val event: NotificationEventHolder,
-    val playerEventHolder: PlayerEventHolder,
-    private val androidNotificationThrottleInterval: Long
+    val playerEventHolder: PlayerEventHolder
 ) : PlayerNotificationManager.NotificationListener {
     private lateinit var descriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter
     private var internalNotificationManager: PlayerNotificationManager? = null
     private val scope = MainScope()
     private val buttons = mutableSetOf<NotificationButton?>()
+    private var invalidateThrottleCount = 0
     private val notificationMetadataFlow = MutableSharedFlow<NotificationMetadata?>(
         extraBufferCapacity = 10,
         onBufferOverflow = BufferOverflow.DROP_OLDEST
@@ -62,11 +66,9 @@ class NotificationManager internal constructor(
     var notificationMetadata: NotificationMetadata? = null
         set(value) {
             // Clear bitmap cache if artwork changes
-            if (field?.artworkUrl != value?.artworkUrl) {
-                val holder = getCurrentItemHolder()
-                if (holder != null) {
-                    holder.artworkBitmap = null
-                }
+            val holder = player?.currentMediaItem?.getAudioItemHolder()
+            if (holder != null && holder.audioItem.artwork != value?.artworkUrl) {
+                holder.artworkBitmap = null
             }
             field = value
             notificationMetadataFlow.tryEmit(field)
@@ -168,10 +170,6 @@ class NotificationManager internal constructor(
     var forwardIcon: Int? = null
     var rewindIcon: Int? = null
 
-    private fun getCurrentItemHolder(): AudioItemHolder? {
-        return player?.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
-    }
-
     init {
         mediaSessionConnector.setQueueNavigator(
             object : TimelineQueueNavigator(mediaSession) {
@@ -219,13 +217,9 @@ class NotificationManager internal constructor(
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
 
         scope.launch {
-            // Throttle for Android rate limits when updating a notification
-            // https://developer.android.com/develop/ui/views/notifications#limits
-            notificationMetadataFlow.throttle(androidNotificationThrottleInterval)
+            notificationMetadataFlow
                 .distinctUntilChanged()
                 .onEach {
-                    invalidate()
-                }.debounce(NOTIFICATION_UPDATE_DELAY_AFTER_THROTTLE).collectLatest {
                     invalidate()
                 }
         }
@@ -316,9 +310,19 @@ class NotificationManager internal constructor(
     }
 
     fun invalidate() {
-        internalNotificationManager?.invalidate()
-        mediaSessionConnector.invalidateMediaSessionQueue()
-        mediaSessionConnector.invalidateMediaSessionMetadata()
+        if (invalidateThrottleCount++ == 0) {
+            scope.launch {
+                internalNotificationManager?.invalidate()
+                mediaSessionConnector.invalidateMediaSessionQueue()
+                mediaSessionConnector.invalidateMediaSessionMetadata()
+                delay(300)
+                val wasThrottled = invalidateThrottleCount > 1
+                invalidateThrottleCount = 0
+                if (wasThrottled) {
+                    invalidate()
+                }
+            }
+        }
     }
 
     /**
@@ -392,7 +396,7 @@ class NotificationManager internal constructor(
                 player: Player,
                 callback: PlayerNotificationManager.BitmapCallback,
             ): Bitmap? {
-                val holder = getCurrentItemHolder() ?: return null
+                val holder = player?.currentMediaItem?.getAudioItemHolder() ?: return null
                 val source = notificationMetadata?.artworkUrl ?: player.mediaMetadata.artworkUri
                 val data = player.mediaMetadata.artworkData
 
@@ -415,6 +419,7 @@ class NotificationManager internal constructor(
                             val bitmap = (result as BitmapDrawable).bitmap
                             holder.artworkBitmap = bitmap
                             callback.onBitmap(bitmap)
+                            invalidate()
                         }
                         .build()
                 )
@@ -601,7 +606,5 @@ class NotificationManager internal constructor(
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_rewind
         private val DEFAULT_FORWARD_ICON =
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_fastforward
-
-        private const val NOTIFICATION_UPDATE_DELAY_AFTER_THROTTLE = 1000L
     }
 }
