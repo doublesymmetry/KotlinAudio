@@ -39,7 +39,6 @@ import com.doublesymmetry.kotlinaudio.models.PlayerOptions
 import com.doublesymmetry.kotlinaudio.models.PositionChangedReason
 import com.doublesymmetry.kotlinaudio.notification.NotificationManager
 import com.doublesymmetry.kotlinaudio.players.components.PlayerCache
-import com.doublesymmetry.kotlinaudio.players.components.getMediaMetadataCompat
 import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.doublesymmetry.kotlinaudio.utils.isUriLocal
 import com.google.android.exoplayer2.C
@@ -259,8 +258,7 @@ abstract class BaseAudioPlayer internal constructor(
             exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
             mediaSessionConnector.setPlayer(playerToUse)
             mediaSessionConnector.setMediaMetadataProvider {
-                exoPlayer.getCurrentMediaItem()?.getMediaMetadataCompat()
-                    ?: MediaMetadataCompat.Builder().build()
+                notificationManager.getMediaMetadataCompat()
             }
         }
 
@@ -319,13 +317,9 @@ abstract class BaseAudioPlayer internal constructor(
         }
     }
 
-    internal fun updateNotificationMetadataIfAutomatic() {
+    internal fun resetNotificationMetadataIfAutomatic() {
         if (automaticallyUpdateNotificationMetadata) {
-            notificationManager.notificationMetadata = NotificationMetadata(
-                currentItem?.title,
-                currentItem?.artist,
-                currentItem?.artwork
-            )
+            notificationManager.notificationMetadata = null
         }
     }
 
@@ -680,7 +674,7 @@ abstract class BaseAudioPlayer internal constructor(
                 )
             }
 
-            updateNotificationMetadataIfAutomatic()
+            resetNotificationMetadataIfAutomatic()
         }
 
         /**

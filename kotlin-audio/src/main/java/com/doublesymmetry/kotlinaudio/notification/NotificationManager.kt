@@ -12,11 +12,13 @@ import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import coil.imageLoader
+import coil.request.Disposable
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
@@ -59,20 +61,130 @@ class NotificationManager internal constructor(
     private val scope = MainScope()
     private val buttons = mutableSetOf<NotificationButton?>()
     private var invalidateThrottleCount = 0
-    private val notificationMetadataFlow = MutableSharedFlow<NotificationMetadata?>(
-        extraBufferCapacity = 10,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private var notificationMetadataBitmap: Bitmap? = null
+    private var notificationMetadataArtworkDisposable: Disposable? = null
+    private var iconPlaceholder = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
     var notificationMetadata: NotificationMetadata? = null
         set(value) {
-            // Clear bitmap cache if artwork changes
-            val holder = player?.currentMediaItem?.getAudioItemHolder()
-            if (holder != null && holder.audioItem.artwork != value?.artworkUrl) {
-                holder.artworkBitmap = null
+            if (value == null) {
+                val changed = field != null
+                if (changed) {
+                    field = null
+                    notificationMetadataBitmap = null
+                    invalidate()
+                }
+                return
             }
-            field = value
-            notificationMetadataFlow.tryEmit(field)
+            val holder = player.currentMediaItem?.getAudioItemHolder()
+            val artworkChanged = field?.artworkUrl != value.artworkUrl
+                && holder?.audioItem?.artwork != value.artworkUrl
+            val titleChanged = holder?.audioItem?.title != value.title
+            val artistChanged = holder?.audioItem?.artist != value.artist
+
+            if (artworkChanged) {
+                notificationMetadataBitmap = null
+                // Cancel loading previous artwork:
+                notificationMetadataArtworkDisposable?.dispose()
+                if (value.artworkUrl != null) {
+                    notificationMetadataArtworkDisposable = context.imageLoader.enqueue(
+                        ImageRequest.Builder(context)
+                            .data(value.artworkUrl)
+                            .target { result ->
+                                notificationMetadataBitmap = (result as BitmapDrawable).bitmap
+                                invalidate()
+                            }
+                            .build()
+                    )
+                } else {
+                    notificationMetadataArtworkDisposable = null
+                }
+            }
+            if (artworkChanged || titleChanged || artistChanged) {
+                field = value
+                invalidate()
+            }
         }
+
+    private fun getTitle(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        val isCurrent = index == null || index == player.currentMediaItemIndex
+        return ((if (isCurrent) notificationMetadata else null)?.title
+            ?: mediaItem?.mediaMetadata?.title
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.title)?.toString()
+    }
+
+    private fun getArtist(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        val isCurrent = index == null || index == player.currentMediaItemIndex
+        return (
+            (if (isCurrent) notificationMetadata else null)?.artist
+            ?: mediaItem?.mediaMetadata?.artist
+            ?: mediaItem?.mediaMetadata?.albumArtist
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.artist
+        )?.toString()
+    }
+
+    private fun getGenre(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return mediaItem?.mediaMetadata?.genre?.toString()
+    }
+
+    private fun getAlbumTitle(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return (mediaItem?.mediaMetadata?.albumTitle
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.albumTitle)?.toString()
+    }
+
+    private fun getArtworkUrl(index: Int? = null): String? {
+        val isCurrent = index == null || index == player.currentMediaItemIndex
+        return (
+            (if (isCurrent) notificationMetadata else null)?.artworkUrl
+            ?: getMediaItemArtworkUrl(index)
+        )?.toString()
+    }
+
+    private fun getMediaItemArtworkUrl(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return (
+            mediaItem?.mediaMetadata?.artworkUri
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.artwork
+        )?.toString()
+    }
+
+    private fun getArtworkBitmap(index: Int? = null): Bitmap? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        val isCurrent = index == null || index == player.currentMediaItemIndex
+        val artworkData = player.mediaMetadata.artworkData
+        return (
+            if (isCurrent && notificationMetadata?.artworkUrl != null)
+                notificationMetadataBitmap
+            else
+                null
+        ) ?: (
+            if (isCurrent && artworkData != null)
+                BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+            else
+                null
+        ) ?: mediaItem?.getAudioItemHolder()?.artworkBitmap
+    }
+
+    private fun getDuration(index: Int? = null): Long? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return mediaItem?.getAudioItemHolder()?.audioItem?.duration ?: -1
+    }
+
+    private fun getUserRating(index: Int? = null): RatingCompat? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return RatingCompat.fromRating(mediaItem?.mediaMetadata?.userRating)
+    }
 
     var showPlayPauseButton = false
         set(value) {
@@ -193,36 +305,54 @@ class NotificationManager internal constructor(
                     player: Player,
                     windowIndex: Int
                 ): MediaDescriptionCompat {
-                    val currentNotificationMetadata =
-                        if (windowIndex == player.currentMediaItemIndex)
-                            notificationMetadata else null
-                    val mediaItem = player.getMediaItemAt(windowIndex)
-                    val audioItemHolder = (mediaItem.localConfiguration?.tag as AudioItemHolder)
-                    var title = currentNotificationMetadata?.title ?: mediaItem.mediaMetadata.title
-                    ?: audioItemHolder.audioItem.title
-                    var artist =
-                        currentNotificationMetadata?.artist ?: mediaItem.mediaMetadata.artist
-                        ?: audioItemHolder.audioItem.artist
+                    val title = getTitle(windowIndex)
+                    val artist = getArtist(windowIndex)
                     return MediaDescriptionCompat.Builder().apply {
                         setTitle(title)
                         setSubtitle(artist)
                         setExtras(Bundle().apply {
-                            putString(MediaMetadataCompat.METADATA_KEY_TITLE, title as String?)
-                            putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist as String?)
+                            title?.let {
+                                putString(MediaMetadataCompat.METADATA_KEY_TITLE, it)
+                            }
+                            artist?.let {
+                                putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
+                            }
                         })
                     }.build()
                 }
             }
         )
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
+    }
 
-        scope.launch {
-            notificationMetadataFlow
-                .distinctUntilChanged()
-                .onEach {
-                    invalidate()
-                }
-        }
+    public fun getMediaMetadataCompat(): MediaMetadataCompat {
+        return MediaMetadataCompat.Builder().apply {
+            getArtist()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
+            }
+            getTitle()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_TITLE, it)
+            }
+            getAlbumTitle()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_ALBUM, it)
+            }
+            getGenre()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_GENRE, it)
+            }
+            getDuration()?.let {
+                putLong(MediaMetadataCompat.METADATA_KEY_DURATION, it)
+            }
+            getArtworkUrl()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_ART_URI, it)
+            }
+            getArtworkBitmap()?.let {
+                putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it);
+                putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, it);
+            }
+            getUserRating()?.let {
+                putRating(MediaMetadataCompat.METADATA_KEY_RATING, it)
+            }
+        }.build()
     }
 
     private fun createNotificationAction(
@@ -372,9 +502,7 @@ class NotificationManager internal constructor(
         )
         descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
             override fun getCurrentContentTitle(player: Player): CharSequence {
-                return notificationMetadata?.title
-                    ?: player.mediaMetadata.title
-                    ?: ""
+                return getTitle() ?: ""
             }
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {
@@ -382,10 +510,7 @@ class NotificationManager internal constructor(
             }
 
             override fun getCurrentContentText(player: Player): CharSequence? {
-                return notificationMetadata?.artist
-                    ?: player.mediaMetadata.artist
-                    ?: player.mediaMetadata.albumArtist
-                    ?: ""
+                return getArtist() ?: ""
             }
 
             override fun getCurrentSubText(player: Player): CharSequence? {
@@ -396,34 +521,25 @@ class NotificationManager internal constructor(
                 player: Player,
                 callback: PlayerNotificationManager.BitmapCallback,
             ): Bitmap? {
-                val holder = player?.currentMediaItem?.getAudioItemHolder() ?: return null
-                val source = notificationMetadata?.artworkUrl ?: player.mediaMetadata.artworkUri
-                val data = player.mediaMetadata.artworkData
-
-                if (notificationMetadata?.artworkUrl == null && data != null) {
-                    return BitmapFactory.decodeByteArray(data, 0, data.size)
+                val bitmap = getArtworkBitmap()
+                if (bitmap != null) {
+                    return bitmap
                 }
-
-                if (source == null) {
-                    return null
+                val artwork = getMediaItemArtworkUrl()
+                val holder = player.currentMediaItem?.getAudioItemHolder()
+                if (artwork != null && holder?.artworkBitmap == null) {
+                    context.imageLoader.enqueue(
+                        ImageRequest.Builder(context)
+                            .data(artwork)
+                            .target { result ->
+                                val resultBitmap = (result as BitmapDrawable).bitmap
+                                holder?.artworkBitmap = resultBitmap
+                                invalidate()
+                            }
+                            .build()
+                    )
                 }
-
-                if (holder.artworkBitmap != null) {
-                    return holder.artworkBitmap
-                }
-
-                context.imageLoader.enqueue(
-                    ImageRequest.Builder(context)
-                        .data(source)
-                        .target { result ->
-                            val bitmap = (result as BitmapDrawable).bitmap
-                            holder.artworkBitmap = bitmap
-                            callback.onBitmap(bitmap)
-                            invalidate()
-                        }
-                        .build()
-                )
-                return holder.artworkBitmap
+                return iconPlaceholder
             }
         }
 
