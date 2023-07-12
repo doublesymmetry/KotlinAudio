@@ -47,17 +47,24 @@ import timber.log.Timber
 import java.util.*
 import java.util.concurrent.TimeUnit
 
+interface AAMediaSessionCallBack {
+    fun handlePlayFromMediaId(mediaId: String?, extras: Bundle?)
+    fun handlePlayFromSearch(query: String?, extras: Bundle?)
+}
+
 abstract class BaseAudioPlayer internal constructor(
     internal val context: Context,
     playerConfig: PlayerConfig,
     private val bufferConfig: BufferConfig?,
-    private val cacheConfig: CacheConfig?
+    private val cacheConfig: CacheConfig?,
+    mediaSessionCallback: AAMediaSessionCallBack
 ) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
 
     private var cache: SimpleCache? = null
     private val scope = MainScope()
     private var playerConfig: PlayerConfig = playerConfig
+    var mediaSessionCallBack: AAMediaSessionCallBack = mediaSessionCallback
 
     val notificationManager: NotificationManager
 
@@ -192,6 +199,15 @@ abstract class BaseAudioPlayer internal constructor(
             .build()
 
         mediaSession.isActive = true
+        mediaSession.setCallback(object: MediaSessionCompat.Callback() {
+            override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
+                mediaSessionCallback.handlePlayFromMediaId(mediaId, extras)
+            }
+
+            override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+                mediaSessionCallback.handlePlayFromSearch(query, extras)
+            }
+        })
 
         val playerToUse =
             if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer

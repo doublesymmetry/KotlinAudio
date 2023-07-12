@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import com.doublesymmetry.kotlin_audio_sample.databinding.FragmentFirstBinding
 import com.doublesymmetry.kotlinaudio.models.*
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
+import com.doublesymmetry.kotlinaudio.players.AAMediaSessionCallBack
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -36,6 +37,15 @@ class FirstFragment : Fragment() {
         return binding.root
     }
 
+    private val myMediaSessionCallBack = object: AAMediaSessionCallBack {
+        override fun handlePlayFromMediaId(mediaId: String?, extra: Bundle?) {
+            Timber.tag("Test").d("playing from mediaID: %s", mediaId)
+        }
+
+        override fun handlePlayFromSearch(query: String?, extras: Bundle?) {
+            Timber.tag("Test").d("playing from query: %s", query)
+        }
+    }
     @SuppressLint("SetTextI18n")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -45,7 +55,7 @@ class FirstFragment : Fragment() {
                 interceptPlayerActionsTriggeredExternally = true,
                 handleAudioBecomingNoisy = true,
                 handleAudioFocus = true
-            )
+            ), mediaSessionCallback = myMediaSessionCallBack
         )
         player.add(firstItem)
         player.add(secondItem)
