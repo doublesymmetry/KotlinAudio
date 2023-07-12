@@ -201,12 +201,40 @@ abstract class BaseAudioPlayer internal constructor(
         mediaSession.isActive = true
         mediaSession.setCallback(object: MediaSessionCompat.Callback() {
             override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
+                Timber.tag("GVATest").d("playing from mediaID: %s", mediaId)
                 mediaSessionCallback.handlePlayFromMediaId(mediaId, extras)
             }
 
             override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+                super.onPlayFromSearch(query, extras)
+                Timber.tag("GVATest").d("playing from query: %s", query)
                 mediaSessionCallback.handlePlayFromSearch(query, extras)
             }
+            // TODO: what's missing?
+            override fun onPlay() {
+                super.onPlay()
+            }
+
+            override fun onFastForward() {
+                super.onFastForward()
+            }
+
+            override fun onPause() {
+                super.onPause()
+            }
+
+            override fun onPrepare() {
+                super.onPrepare()
+            }
+
+            override fun onRewind() {
+                super.onRewind()
+            }
+
+            override fun onSeekTo(pos: Long) {
+                super.onSeekTo(pos)
+            }
+
         })
 
         val playerToUse =
