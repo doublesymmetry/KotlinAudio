@@ -199,6 +199,10 @@ abstract class BaseAudioPlayer internal constructor(
             .build()
 
         mediaSession.isActive = true
+
+        val playerToUse =
+            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer
+
         mediaSession.setCallback(object: MediaSessionCompat.Callback() {
             override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
                 Timber.tag("GVATest").d("playing from mediaID: %s", mediaId)
@@ -212,33 +216,39 @@ abstract class BaseAudioPlayer internal constructor(
             }
             // TODO: what's missing?
             override fun onPlay() {
-                super.onPlay()
-            }
-
-            override fun onFastForward() {
-                super.onFastForward()
+                playerToUse.play()
             }
 
             override fun onPause() {
-                super.onPause()
+                playerToUse.pause()
             }
 
-            override fun onPrepare() {
-                super.onPrepare()
+            override fun onSkipToNext() {
+                playerToUse.seekToNext()
+            }
+
+            override fun onSkipToPrevious() {
+                playerToUse.seekToPrevious()
+            }
+
+            override fun onFastForward() {
+                playerToUse.seekForward()
             }
 
             override fun onRewind() {
-                super.onRewind()
+                playerToUse.seekBack()
+            }
+
+            override fun onStop() {
+                playerToUse.stop()
             }
 
             override fun onSeekTo(pos: Long) {
-                super.onSeekTo(pos)
+                playerToUse.seekTo(pos)
             }
 
         })
 
-        val playerToUse =
-            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer
 
         notificationManager = NotificationManager(
             context,
