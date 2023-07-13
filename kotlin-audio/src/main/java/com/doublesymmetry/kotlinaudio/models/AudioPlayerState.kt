@@ -22,7 +22,7 @@ enum class AudioPlayerState {
     /** No [AudioItem] is loaded and the player is doing nothing. */
     IDLE,
 
-    /** The player has finished playing all the [AudioItem]s. TODO: Add additional info */
+    /** Playback stopped due to the end of the queue being reached. */
     ENDED,
 
     /** The player stopped playing due to an error. */
