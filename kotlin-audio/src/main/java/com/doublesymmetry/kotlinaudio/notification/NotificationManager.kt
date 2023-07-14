@@ -489,9 +489,8 @@ class NotificationManager internal constructor(
     }
 
     /**
-     * Create a media player notification that automatically updates.
-     *
-     * **NOTE:** You should only call this once. Subsequent calls will result in an error.
+     * Create a media player notification that automatically updates. Call this
+     * method again with a different configuration to update the notification.
      */
     fun createNotification(config: NotificationConfig) = scope.launch {
         if (isNotificationButtonsChanged(config.buttons)) {
@@ -587,7 +586,7 @@ class NotificationManager internal constructor(
                 is NotificationButton.STOP -> {
                     (currentNotificationButtonsMapByType[NotificationButton.STOP::class] as? NotificationButton.STOP).let { currentButton ->
                         newButton.icon != currentButton?.icon
-                    } ?: false
+                    }
                 }
 
                 is NotificationButton.FORWARD -> {
