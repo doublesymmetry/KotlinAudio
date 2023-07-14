@@ -23,13 +23,11 @@ import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
-import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
 import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
 import com.doublesymmetry.kotlinaudio.models.NotificationButton
 import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.NotificationState
-import com.doublesymmetry.kotlinaudio.players.BaseAudioPlayer
 import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
@@ -37,18 +35,7 @@ import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 
 class NotificationManager internal constructor(
@@ -505,11 +492,12 @@ class NotificationManager internal constructor(
      * Create a media player notification that automatically updates.
      *
      * **NOTE:** You should only call this once. Subsequent calls will result in an error.
-     *
-     * Updated: Only update [internalNotificationManager] properties when call [createNotification] again.
-     * If you want to update the ResourceId of the buttons, call [hideNotification] before calling [createNotification] function.
      */
     fun createNotification(config: NotificationConfig) = scope.launch {
+        if (isNotificationButtonsChanged(config.buttons)) {
+            hideNotification()
+        }
+
         buttons.apply {
             clear()
             addAll(config.buttons)
@@ -584,6 +572,51 @@ class NotificationManager internal constructor(
                     }
         }
         setupInternalNotificationManager(config)
+    }
+
+    private fun isNotificationButtonsChanged(newButtons: List<NotificationButton>): Boolean {
+        val currentNotificationButtonsMapByType = buttons.filterNotNull().associateBy { it::class }
+        return newButtons.any { newButton ->
+            when (newButton) {
+                is NotificationButton.PLAY_PAUSE -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.PLAY_PAUSE::class] as? NotificationButton.PLAY_PAUSE).let { currentButton ->
+                        newButton.pauseIcon != currentButton?.pauseIcon || newButton.playIcon != currentButton?.playIcon
+                    }
+                }
+
+                is NotificationButton.STOP -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.STOP::class] as? NotificationButton.STOP).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    } ?: false
+                }
+
+                is NotificationButton.FORWARD -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.FORWARD::class] as? NotificationButton.FORWARD).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.BACKWARD -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.BACKWARD::class] as? NotificationButton.BACKWARD).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.NEXT -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.NEXT::class] as? NotificationButton.NEXT).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.PREVIOUS -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.PREVIOUS::class] as? NotificationButton.PREVIOUS).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                else -> false
+            }
+        }
     }
 
     private fun updateMediaSessionPlaybackActions() {
@@ -689,13 +722,10 @@ class NotificationManager internal constructor(
         }
     }
 
-    fun hideNotification() = scope.launch {
-        flow<Unit> {
-            internalNotificationManager?.setPlayer(null)
-            internalNotificationManager = null
-            invalidate()
-            delay(500L)
-        }.collect()
+    fun hideNotification() {
+        internalNotificationManager?.setPlayer(null)
+        internalNotificationManager = null
+        invalidate()
     }
 
     override fun onNotificationPosted(
