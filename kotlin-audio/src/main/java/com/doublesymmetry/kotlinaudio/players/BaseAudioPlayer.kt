@@ -19,12 +19,39 @@ import androidx.media.AudioManagerCompat.AUDIOFOCUS_GAIN
 import com.doublesymmetry.kotlinaudio.event.EventHolder
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
-import com.doublesymmetry.kotlinaudio.models.*
+import com.doublesymmetry.kotlinaudio.models.AudioContentType
+import com.doublesymmetry.kotlinaudio.models.AudioItem
+import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
+import com.doublesymmetry.kotlinaudio.models.AudioItemTransitionReason
+import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
+import com.doublesymmetry.kotlinaudio.models.BufferConfig
+import com.doublesymmetry.kotlinaudio.models.CacheConfig
+import com.doublesymmetry.kotlinaudio.models.DefaultPlayerOptions
+import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
+import com.doublesymmetry.kotlinaudio.models.MediaType
+import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
+import com.doublesymmetry.kotlinaudio.models.PlayWhenReadyChangeData
+import com.doublesymmetry.kotlinaudio.models.PlaybackError
+import com.doublesymmetry.kotlinaudio.models.PlaybackMetadata
+import com.doublesymmetry.kotlinaudio.models.PlayerConfig
+import com.doublesymmetry.kotlinaudio.models.PlayerOptions
+import com.doublesymmetry.kotlinaudio.models.PositionChangedReason
 import com.doublesymmetry.kotlinaudio.notification.NotificationManager
 import com.doublesymmetry.kotlinaudio.players.components.PlayerCache
 import com.doublesymmetry.kotlinaudio.utils.isUriLocal
-import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.DefaultLoadControl.*
+import com.google.android.exoplayer2.C
+import com.google.android.exoplayer2.DefaultLoadControl
+import com.google.android.exoplayer2.DefaultLoadControl.Builder
+import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BACK_BUFFER_DURATION_MS
+import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
+import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS
+import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MAX_BUFFER_MS
+import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MIN_BUFFER_MS
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.ForwardingPlayer
+import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.PlaybackException
+import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.Player.Listener
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
@@ -37,27 +64,38 @@ import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource
 import com.google.android.exoplayer2.source.hls.HlsMediaSource
 import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
-import com.google.android.exoplayer2.upstream.*
+import com.google.android.exoplayer2.upstream.DataSource
+import com.google.android.exoplayer2.upstream.DataSpec
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
+import com.google.android.exoplayer2.upstream.RawResourceDataSource
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource
 import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.*
+import java.util.Locale
 import java.util.concurrent.TimeUnit
+
+interface AAMediaSessionCallBack {
+    fun handlePlayFromMediaId(mediaId: String?, extras: Bundle?)
+    fun handlePlayFromSearch(query: String?, extras: Bundle?)
+}
 
 abstract class BaseAudioPlayer internal constructor(
     internal val context: Context,
     playerConfig: PlayerConfig,
     private val bufferConfig: BufferConfig?,
-    private val cacheConfig: CacheConfig?
+    private val cacheConfig: CacheConfig?,
+    mediaSessionCallback: AAMediaSessionCallBack
 ) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
 
     private var cache: SimpleCache? = null
     private val scope = MainScope()
     private var playerConfig: PlayerConfig = playerConfig
+    var mediaSessionCallBack: AAMediaSessionCallBack = mediaSessionCallback
 
     val notificationManager: NotificationManager
 
@@ -196,13 +234,61 @@ abstract class BaseAudioPlayer internal constructor(
         val playerToUse =
             if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer
 
+        mediaSession.setCallback(object: MediaSessionCompat.Callback() {
+            override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
+                Timber.tag("GVATest").d("playing from mediaID: %s", mediaId)
+                mediaSessionCallback.handlePlayFromMediaId(mediaId, extras)
+            }
+
+            override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+                super.onPlayFromSearch(query, extras)
+                Timber.tag("GVATest").d("playing from query: %s", query)
+                mediaSessionCallback.handlePlayFromSearch(query, extras)
+            }
+            // TODO: what's missing?
+            override fun onPlay() {
+                playerToUse.play()
+            }
+
+            override fun onPause() {
+                playerToUse.pause()
+            }
+
+            override fun onSkipToNext() {
+                playerToUse.seekToNext()
+            }
+
+            override fun onSkipToPrevious() {
+                playerToUse.seekToPrevious()
+            }
+
+            override fun onFastForward() {
+                playerToUse.seekForward()
+            }
+
+            override fun onRewind() {
+                playerToUse.seekBack()
+            }
+
+            override fun onStop() {
+                playerToUse.stop()
+            }
+
+            override fun onSeekTo(pos: Long) {
+                playerToUse.seekTo(pos)
+            }
+
+        })
+
+
         notificationManager = NotificationManager(
             context,
             playerToUse,
             mediaSession,
             mediaSessionConnector,
             notificationEventHolder,
-            playerEventHolder
+            playerEventHolder,
+            playerConfig.androidNotificationThrottleInterval
         )
 
         exoPlayer.addListener(PlayerListener())
@@ -565,6 +651,7 @@ abstract class BaseAudioPlayer internal constructor(
 
     companion object {
         const val APPLICATION_NAME = "react-native-track-player"
+        const val ANDROID_NOTIFICATION_UPDATE_THROTTLE_INTERVAL = 300L
     }
 
     inner class PlayerListener : Listener {
@@ -681,7 +768,9 @@ abstract class BaseAudioPlayer internal constructor(
                                     null
                                 else
                                     AudioPlayerState.IDLE
-                            Player.STATE_ENDED -> AudioPlayerState.ENDED
+                            Player.STATE_ENDED ->
+                                if (player.mediaItemCount > 0) AudioPlayerState.ENDED
+                                else AudioPlayerState.IDLE
                             else -> null // noop
                         }
                         if (state != null && state != playerState) {
