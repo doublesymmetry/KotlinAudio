@@ -23,13 +23,11 @@ import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
-import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
 import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
 import com.doublesymmetry.kotlinaudio.models.NotificationButton
 import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.NotificationState
-import com.doublesymmetry.kotlinaudio.players.BaseAudioPlayer
 import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
@@ -37,15 +35,7 @@ import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 class NotificationManager internal constructor(
@@ -56,7 +46,50 @@ class NotificationManager internal constructor(
     val event: NotificationEventHolder,
     val playerEventHolder: PlayerEventHolder
 ) : PlayerNotificationManager.NotificationListener {
-    private lateinit var descriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter
+    private var pendingIntent: PendingIntent? = null
+    private val descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
+        override fun getCurrentContentTitle(player: Player): CharSequence {
+            return getTitle() ?: ""
+        }
+
+        override fun createCurrentContentIntent(player: Player): PendingIntent? {
+            return pendingIntent
+        }
+
+        override fun getCurrentContentText(player: Player): CharSequence? {
+            return getArtist() ?: ""
+        }
+
+        override fun getCurrentSubText(player: Player): CharSequence? {
+            return player.mediaMetadata.displayTitle
+        }
+
+        override fun getCurrentLargeIcon(
+            player: Player,
+            callback: PlayerNotificationManager.BitmapCallback,
+        ): Bitmap? {
+            val bitmap = getArtworkBitmap()
+            if (bitmap != null) {
+                return bitmap
+            }
+            val artwork = getMediaItemArtworkUrl()
+            val holder = player.currentMediaItem?.getAudioItemHolder()
+            if (artwork != null && holder?.artworkBitmap == null) {
+                context.imageLoader.enqueue(
+                    ImageRequest.Builder(context)
+                        .data(artwork)
+                        .target { result ->
+                            val resultBitmap = (result as BitmapDrawable).bitmap
+                            holder?.artworkBitmap = resultBitmap
+                            invalidate()
+                        }
+                        .build()
+                )
+            }
+            return iconPlaceholder
+        }
+    }
+
     private var internalNotificationManager: PlayerNotificationManager? = null
     private val scope = MainScope()
     private val buttons = mutableSetOf<NotificationButton?>()
@@ -461,6 +494,10 @@ class NotificationManager internal constructor(
      * **NOTE:** You should only call this once. Subsequent calls will result in an error.
      */
     fun createNotification(config: NotificationConfig) = scope.launch {
+        if (isNotificationButtonsChanged(config.buttons)) {
+            hideNotification()
+        }
+
         buttons.apply {
             clear()
             addAll(config.buttons)
@@ -469,6 +506,120 @@ class NotificationManager internal constructor(
         stopIcon = null
         forwardIcon = null
         rewindIcon = null
+
+        updateMediaSessionPlaybackActions()
+
+        pendingIntent = config.pendingIntent
+        showPlayPauseButton = false
+        showForwardButton = false
+        showRewindButton = false
+        showNextButton = false
+        showPreviousButton = false
+        showStopButton = false
+        if (internalNotificationManager == null) {
+            internalNotificationManager =
+                PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID)
+                    .apply {
+                        setChannelNameResourceId(R.string.playback_channel_name)
+                        setMediaDescriptionAdapter(descriptionAdapter)
+                        setCustomActionReceiver(customActionReceiver)
+                        setNotificationListener(this@NotificationManager)
+
+                        for (button in buttons) {
+                            if (button == null) continue
+                            when (button) {
+                                is NotificationButton.PLAY_PAUSE -> {
+                                    button.playIcon?.let { setPlayActionIconResourceId(it) }
+                                    button.pauseIcon?.let { setPauseActionIconResourceId(it) }
+                                }
+
+                                is NotificationButton.STOP -> button.icon?.let {
+                                    setStopActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                is NotificationButton.FORWARD -> button.icon?.let {
+                                    setFastForwardActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                is NotificationButton.BACKWARD -> button.icon?.let {
+                                    setRewindActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                is NotificationButton.NEXT -> button.icon?.let {
+                                    setNextActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                is NotificationButton.PREVIOUS -> button.icon?.let {
+                                    setPreviousActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                else -> {}
+                            }
+                        }
+                    }.build().apply {
+                        setMediaSessionToken(mediaSession.sessionToken)
+                        setPlayer(player)
+                    }
+        }
+        setupInternalNotificationManager(config)
+    }
+
+    private fun isNotificationButtonsChanged(newButtons: List<NotificationButton>): Boolean {
+        val currentNotificationButtonsMapByType = buttons.filterNotNull().associateBy { it::class }
+        return newButtons.any { newButton ->
+            when (newButton) {
+                is NotificationButton.PLAY_PAUSE -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.PLAY_PAUSE::class] as? NotificationButton.PLAY_PAUSE).let { currentButton ->
+                        newButton.pauseIcon != currentButton?.pauseIcon || newButton.playIcon != currentButton?.playIcon
+                    }
+                }
+
+                is NotificationButton.STOP -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.STOP::class] as? NotificationButton.STOP).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    } ?: false
+                }
+
+                is NotificationButton.FORWARD -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.FORWARD::class] as? NotificationButton.FORWARD).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.BACKWARD -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.BACKWARD::class] as? NotificationButton.BACKWARD).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.NEXT -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.NEXT::class] as? NotificationButton.NEXT).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.PREVIOUS -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.PREVIOUS::class] as? NotificationButton.PREVIOUS).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                else -> false
+            }
+        }
+    }
+
+    private fun updateMediaSessionPlaybackActions() {
         mediaSessionConnector.setEnabledPlaybackActions(
             buttons.fold(
                 PlaybackStateCompat.ACTION_SET_REPEAT_MODE
@@ -500,49 +651,6 @@ class NotificationManager internal constructor(
                 }
             }
         )
-        descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
-            override fun getCurrentContentTitle(player: Player): CharSequence {
-                return getTitle() ?: ""
-            }
-
-            override fun createCurrentContentIntent(player: Player): PendingIntent? {
-                return config.pendingIntent
-            }
-
-            override fun getCurrentContentText(player: Player): CharSequence? {
-                return getArtist() ?: ""
-            }
-
-            override fun getCurrentSubText(player: Player): CharSequence? {
-                return player.mediaMetadata.displayTitle
-            }
-
-            override fun getCurrentLargeIcon(
-                player: Player,
-                callback: PlayerNotificationManager.BitmapCallback,
-            ): Bitmap? {
-                val bitmap = getArtworkBitmap()
-                if (bitmap != null) {
-                    return bitmap
-                }
-                val artwork = getMediaItemArtworkUrl()
-                val holder = player.currentMediaItem?.getAudioItemHolder()
-                if (artwork != null && holder?.artworkBitmap == null) {
-                    context.imageLoader.enqueue(
-                        ImageRequest.Builder(context)
-                            .data(artwork)
-                            .target { result ->
-                                val resultBitmap = (result as BitmapDrawable).bitmap
-                                holder?.artworkBitmap = resultBitmap
-                                invalidate()
-                            }
-                            .build()
-                    )
-                }
-                return iconPlaceholder
-            }
-        }
-
         if (needsCustomActionsToAddMissingButtons) {
             val customActionProviders = buttons
                 .sortedBy {
@@ -571,97 +679,53 @@ class NotificationManager internal constructor(
                 }
             mediaSessionConnector.setCustomActionProviders(*customActionProviders.toTypedArray())
         }
-
-        internalNotificationManager =
-            PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID)
-                .apply {
-                    setChannelNameResourceId(R.string.playback_channel_name)
-                    setMediaDescriptionAdapter(descriptionAdapter)
-                    setCustomActionReceiver(customActionReceiver)
-                    setNotificationListener(this@NotificationManager)
-
-                    internalNotificationManager.apply {
-                        showPlayPauseButton = false
-                        showForwardButton = false
-                        showRewindButton = false
-                        showNextButton = false
-                        showPreviousButton = false
-                        showStopButton = false
-                    }
-
-                    for (button in buttons) {
-                        if (button == null) continue
-                        when (button) {
-                            is NotificationButton.PLAY_PAUSE -> {
-                                button.playIcon?.let { setPlayActionIconResourceId(it) }
-                                button.pauseIcon?.let { setPauseActionIconResourceId(it) }
-                            }
-                            is NotificationButton.STOP -> button.icon?.let {
-                                setStopActionIconResourceId(
-                                    it
-                                )
-                            }
-                            is NotificationButton.FORWARD -> button.icon?.let {
-                                setFastForwardActionIconResourceId(
-                                    it
-                                )
-                            }
-                            is NotificationButton.BACKWARD -> button.icon?.let {
-                                setRewindActionIconResourceId(
-                                    it
-                                )
-                            }
-                            is NotificationButton.NEXT -> button.icon?.let {
-                                setNextActionIconResourceId(
-                                    it
-                                )
-                            }
-                            is NotificationButton.PREVIOUS -> button.icon?.let {
-                                setPreviousActionIconResourceId(
-                                    it
-                                )
-                            }
-                            else -> {}
-                        }
-                    }
-                }.build().apply {
-                    setColor(config.accentColor ?: Color.TRANSPARENT)
-                    config.smallIcon?.let { setSmallIcon(it) }
-                    for (button in buttons) {
-                        if (button == null) continue
-                        when (button) {
-                            is NotificationButton.PLAY_PAUSE -> {
-                                showPlayPauseButton = true
-                            }
-                            is NotificationButton.STOP -> {
-                                showStopButton = true
-                            }
-                            is NotificationButton.FORWARD -> {
-                                showForwardButton = true
-                                showForwardButtonCompact = button.isCompact
-                            }
-                            is NotificationButton.BACKWARD -> {
-                                showRewindButton = true
-                                showRewindButtonCompact = button.isCompact
-                            }
-                            is NotificationButton.NEXT -> {
-                                showNextButton = true
-                                showNextButtonCompact = button.isCompact
-                            }
-                            is NotificationButton.PREVIOUS -> {
-                                showPreviousButton = true
-                                showPreviousButtonCompact = button.isCompact
-                            }
-                            else -> {}
-                        }
-                    }
-                    setMediaSessionToken(mediaSession.sessionToken)
-                    setPlayer(player)
-                }
     }
 
-    fun hideNotification() = scope.launch {
+    private fun setupInternalNotificationManager(config: NotificationConfig) {
+        internalNotificationManager?.run {
+            setColor(config.accentColor ?: Color.TRANSPARENT)
+            config.smallIcon?.let { setSmallIcon(it) }
+            for (button in buttons) {
+                if (button == null) continue
+                when (button) {
+                    is NotificationButton.PLAY_PAUSE -> {
+                        showPlayPauseButton = true
+                    }
+
+                    is NotificationButton.STOP -> {
+                        showStopButton = true
+                    }
+
+                    is NotificationButton.FORWARD -> {
+                        showForwardButton = true
+                        showForwardButtonCompact = button.isCompact
+                    }
+
+                    is NotificationButton.BACKWARD -> {
+                        showRewindButton = true
+                        showRewindButtonCompact = button.isCompact
+                    }
+
+                    is NotificationButton.NEXT -> {
+                        showNextButton = true
+                        showNextButtonCompact = button.isCompact
+                    }
+
+                    is NotificationButton.PREVIOUS -> {
+                        showPreviousButton = true
+                        showPreviousButtonCompact = button.isCompact
+                    }
+
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    fun hideNotification() {
         internalNotificationManager?.setPlayer(null)
+        internalNotificationManager = null
+        invalidate()
     }
 
     override fun onNotificationPosted(
