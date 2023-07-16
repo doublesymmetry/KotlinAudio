@@ -3,6 +3,7 @@ package com.doublesymmetry.kotlinaudio.players
 import android.content.Context
 import android.media.AudioManager
 import android.media.AudioManager.AUDIOFOCUS_LOSS
+import android.media.audiofx.Equalizer
 import android.net.Uri
 import android.os.Bundle
 import android.os.ResultReceiver
@@ -96,6 +97,15 @@ abstract class BaseAudioPlayer internal constructor(
 
     open val currentItem: AudioItem?
         get() = exoPlayer.currentMediaItem?.localConfiguration?.tag as AudioItem?
+
+    private var _equalizer: Equalizer? = null
+    open val equalizer: Equalizer
+        get() {
+            if (_equalizer == null) {
+                _equalizer = Equalizer(0, exoPlayer.audioSessionId)
+            }
+            return _equalizer!!
+        }
 
     var playbackError: PlaybackError? = null
     var playerState: AudioPlayerState = AudioPlayerState.IDLE
@@ -438,6 +448,62 @@ abstract class BaseAudioPlayer internal constructor(
     open fun seekBy(offset: Long, unit: TimeUnit) {
         val positionMs = exoPlayer.currentPosition + TimeUnit.MILLISECONDS.convert(offset, unit)
         exoPlayer.seekTo(positionMs)
+    }
+
+    open fun setEqualizerLevels(levels: ShortArray): Boolean {
+        var changed = false
+        if (levels.size != equalizer.numberOfBands.toInt()) {
+            throw Error("Invalid number of bands.")
+        }
+        for (i in 0 until equalizer.numberOfBands) {
+            val band = i.toShort()
+            val level = levels[i]
+            val currentLevel = equalizer.getBandLevel(band)
+            if (currentLevel != level) {
+                equalizer.setBandLevel(band, levels[i])
+                changed = true
+            }
+        }
+        equalizer.enabled = true
+        return changed
+    }
+
+    open fun getEqualizerPresets(): Array<String> {
+        val number = equalizer.numberOfPresets.toInt()
+        val presetNames = Array<String>(number) {""}
+        for (i in 0 until number) {
+            presetNames[i] = equalizer.getPresetName(i.toShort())
+        }
+
+        return presetNames;
+    }
+
+    open fun setEqualizerPreset(presetName: String): Boolean {
+        val currentPreset = equalizer.currentPreset
+        for (i in 0 until equalizer.numberOfPresets.toInt()) {
+            val currentPresetName = equalizer.getPresetName(i.toShort())
+            if (currentPresetName == presetName) {
+                val newPreset = i.toShort()
+                if (currentPreset != newPreset) {
+                    equalizer.usePreset(newPreset)
+                    return true
+                }
+                break
+            }
+        }
+        return false
+    }
+
+    open fun setEqualizerEnabled(enabled: Boolean): Boolean {
+        val changed = enabled != equalizer.enabled
+        equalizer.enabled = enabled
+        return changed
+    }
+
+    open fun clearEqualizer() {
+        var equalizer = _equalizer ?: return
+        equalizer.release()
+        _equalizer = null
     }
 
     private fun getMediaItemFromAudioItem(audioItem: AudioItem): MediaItem {
