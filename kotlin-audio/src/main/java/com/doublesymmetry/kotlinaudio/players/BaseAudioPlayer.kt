@@ -81,6 +81,7 @@ import java.util.concurrent.TimeUnit
 interface AAMediaSessionCallBack {
     fun handlePlayFromMediaId(mediaId: String?, extras: Bundle?)
     fun handlePlayFromSearch(query: String?, extras: Bundle?)
+    fun handleSkipToQueueItem(id: Long)
 }
 
 abstract class BaseAudioPlayer internal constructor(
@@ -245,6 +246,10 @@ abstract class BaseAudioPlayer internal constructor(
                 Timber.tag("GVATest").d("playing from query: %s", query)
                 mediaSessionCallback.handlePlayFromSearch(query, extras)
             }
+            // https://stackoverflow.com/questions/53837783/selecting-media-item-in-android-auto-queue-does-nothing
+            override fun onSkipToQueueItem(id: Long) {
+                mediaSessionCallback.handleSkipToQueueItem(id)
+            }
             // TODO: what's missing?
             override fun onPlay() {
                 playerToUse.play()
@@ -278,6 +283,24 @@ abstract class BaseAudioPlayer internal constructor(
                 playerToUse.seekTo(pos)
             }
 
+            override fun onSetRating(rating: RatingCompat?) {
+                if (rating == null) return
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(
+                    MediaSessionCallback.RATING(
+                        rating, null
+                    )
+                )
+            }
+
+            override fun onSetRating(rating: RatingCompat?, extras: Bundle?) {
+                if (rating == null) return
+                playerEventHolder.updateOnPlayerActionTriggeredExternally(
+                    MediaSessionCallback.RATING(
+                        rating,
+                        extras
+                    )
+                )
+            }
         })
 
 
