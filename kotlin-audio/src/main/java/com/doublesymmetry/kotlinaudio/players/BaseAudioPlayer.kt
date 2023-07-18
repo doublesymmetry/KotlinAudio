@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.ResultReceiver
 import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.MediaMetadataCompat
 import androidx.annotation.CallSuper
 import androidx.core.content.ContextCompat
 import androidx.media.AudioAttributesCompat
@@ -38,6 +39,7 @@ import com.doublesymmetry.kotlinaudio.models.PlayerOptions
 import com.doublesymmetry.kotlinaudio.models.PositionChangedReason
 import com.doublesymmetry.kotlinaudio.notification.NotificationManager
 import com.doublesymmetry.kotlinaudio.players.components.PlayerCache
+import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.doublesymmetry.kotlinaudio.utils.isUriLocal
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.DefaultLoadControl
@@ -95,7 +97,7 @@ abstract class BaseAudioPlayer internal constructor(
     open val playerOptions: PlayerOptions = DefaultPlayerOptions()
 
     open val currentItem: AudioItem?
-        get() = exoPlayer.currentMediaItem?.localConfiguration?.tag as AudioItem?
+        get() = exoPlayer.currentMediaItem?.getAudioItemHolder()?.audioItem
 
     var playbackError: PlaybackError? = null
     var playerState: AudioPlayerState = AudioPlayerState.IDLE
@@ -233,8 +235,7 @@ abstract class BaseAudioPlayer internal constructor(
             mediaSession,
             mediaSessionConnector,
             notificationEventHolder,
-            playerEventHolder,
-            playerConfig.androidNotificationThrottleInterval
+            playerEventHolder
         )
 
         exoPlayer.addListener(PlayerListener())
@@ -256,6 +257,9 @@ abstract class BaseAudioPlayer internal constructor(
                 .build();
             exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
             mediaSessionConnector.setPlayer(playerToUse)
+            mediaSessionConnector.setMediaMetadataProvider {
+                notificationManager.getMediaMetadataCompat()
+            }
         }
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
@@ -313,13 +317,9 @@ abstract class BaseAudioPlayer internal constructor(
         }
     }
 
-    internal fun updateNotificationMetadataIfAutomatic() {
+    internal fun resetNotificationMetadataIfAutomatic() {
         if (automaticallyUpdateNotificationMetadata) {
-            notificationManager.notificationMetadata = NotificationMetadata(
-                currentItem?.title,
-                currentItem?.artist,
-                currentItem?.artwork
-            )
+            notificationManager.notificationMetadata = null
         }
     }
 
@@ -440,14 +440,12 @@ abstract class BaseAudioPlayer internal constructor(
         exoPlayer.seekTo(positionMs)
     }
 
-    private fun getMediaItemFromAudioItem(audioItem: AudioItem): MediaItem {
-        return MediaItem.Builder().setUri(audioItem.audioUrl).setTag(AudioItemHolder(audioItem)).build()
-    }
-
     protected fun getMediaSourceFromAudioItem(audioItem: AudioItem): MediaSource {
-        val factory: DataSource.Factory
         val uri = Uri.parse(audioItem.audioUrl)
-        val mediaItem = getMediaItemFromAudioItem(audioItem)
+        val mediaItem = MediaItem.Builder()
+            .setUri(audioItem.audioUrl)
+            .setTag(AudioItemHolder(audioItem))
+            .build()
 
         val userAgent =
             if (audioItem.options == null || audioItem.options!!.userAgent.isNullOrBlank()) {
@@ -456,7 +454,7 @@ abstract class BaseAudioPlayer internal constructor(
                 audioItem.options!!.userAgent
             }
 
-        factory = when {
+        val factory: DataSource.Factory = when {
             audioItem.options?.resourceId != null -> {
                 val raw = RawResourceDataSource(context)
                 raw.open(DataSpec(uri))
@@ -676,7 +674,7 @@ abstract class BaseAudioPlayer internal constructor(
                 )
             }
 
-            updateNotificationMetadataIfAutomatic()
+            resetNotificationMetadataIfAutomatic()
         }
 
         /**

@@ -12,34 +12,30 @@ import android.os.Build
 import android.os.Bundle
 import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import coil.imageLoader
+import coil.request.Disposable
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.R
-import com.doublesymmetry.kotlinaudio.utils.throttle
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
-import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
 import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
 import com.doublesymmetry.kotlinaudio.models.NotificationButton
 import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.NotificationState
+import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.ext.mediasession.TimelineQueueNavigator
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionReceiver
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class NotificationManager internal constructor(
@@ -48,29 +44,180 @@ class NotificationManager internal constructor(
     private val mediaSession: MediaSessionCompat,
     private val mediaSessionConnector: MediaSessionConnector,
     val event: NotificationEventHolder,
-    val playerEventHolder: PlayerEventHolder,
-    private val androidNotificationThrottleInterval: Long
+    val playerEventHolder: PlayerEventHolder
 ) : PlayerNotificationManager.NotificationListener {
-    private lateinit var descriptionAdapter: PlayerNotificationManager.MediaDescriptionAdapter
+    private var pendingIntent: PendingIntent? = null
+    private val descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
+        override fun getCurrentContentTitle(player: Player): CharSequence {
+            return getTitle() ?: ""
+        }
+
+        override fun createCurrentContentIntent(player: Player): PendingIntent? {
+            return pendingIntent
+        }
+
+        override fun getCurrentContentText(player: Player): CharSequence? {
+            return getArtist() ?: ""
+        }
+
+        override fun getCurrentSubText(player: Player): CharSequence? {
+            return player.mediaMetadata.displayTitle
+        }
+
+        override fun getCurrentLargeIcon(
+            player: Player,
+            callback: PlayerNotificationManager.BitmapCallback,
+        ): Bitmap? {
+            val bitmap = getArtworkBitmap()
+            if (bitmap != null) {
+                return bitmap
+            }
+            val artwork = getMediaItemArtworkUrl()
+            val holder = player.currentMediaItem?.getAudioItemHolder()
+            if (artwork != null && holder?.artworkBitmap == null) {
+                context.imageLoader.enqueue(
+                    ImageRequest.Builder(context)
+                        .data(artwork)
+                        .target { result ->
+                            val resultBitmap = (result as BitmapDrawable).bitmap
+                            holder?.artworkBitmap = resultBitmap
+                            invalidate()
+                        }
+                        .build()
+                )
+            }
+            return iconPlaceholder
+        }
+    }
+
     private var internalNotificationManager: PlayerNotificationManager? = null
     private val scope = MainScope()
     private val buttons = mutableSetOf<NotificationButton?>()
-    private val notificationMetadataFlow = MutableSharedFlow<NotificationMetadata?>(
-        extraBufferCapacity = 10,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
+    private var invalidateThrottleCount = 0
+    private var notificationMetadataBitmap: Bitmap? = null
+    private var notificationMetadataArtworkDisposable: Disposable? = null
+    private var iconPlaceholder = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
     var notificationMetadata: NotificationMetadata? = null
         set(value) {
-            // Clear bitmap cache if artwork changes
-            if (field?.artworkUrl != value?.artworkUrl) {
-                val holder = getCurrentItemHolder()
-                if (holder != null) {
-                    holder.artworkBitmap = null
+            if (value == null) {
+                val changed = field != null
+                if (changed) {
+                    field = null
+                    notificationMetadataBitmap = null
+                    invalidate()
+                }
+                return
+            }
+            val holder = player.currentMediaItem?.getAudioItemHolder()
+            val artworkChanged = field?.artworkUrl != value.artworkUrl
+                && holder?.audioItem?.artwork != value.artworkUrl
+            val titleChanged = holder?.audioItem?.title != value.title
+            val artistChanged = holder?.audioItem?.artist != value.artist
+
+            if (artworkChanged) {
+                notificationMetadataBitmap = null
+                // Cancel loading previous artwork:
+                notificationMetadataArtworkDisposable?.dispose()
+                if (value.artworkUrl != null) {
+                    notificationMetadataArtworkDisposable = context.imageLoader.enqueue(
+                        ImageRequest.Builder(context)
+                            .data(value.artworkUrl)
+                            .target { result ->
+                                notificationMetadataBitmap = (result as BitmapDrawable).bitmap
+                                invalidate()
+                            }
+                            .build()
+                    )
+                } else {
+                    notificationMetadataArtworkDisposable = null
                 }
             }
-            field = value
-            notificationMetadataFlow.tryEmit(field)
+            if (artworkChanged || titleChanged || artistChanged) {
+                field = value
+                invalidate()
+            }
         }
+
+    private fun getTitle(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        val isCurrent = index == null || index == player.currentMediaItemIndex
+        return ((if (isCurrent) notificationMetadata else null)?.title
+            ?: mediaItem?.mediaMetadata?.title
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.title)?.toString()
+    }
+
+    private fun getArtist(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        val isCurrent = index == null || index == player.currentMediaItemIndex
+        return (
+            (if (isCurrent) notificationMetadata else null)?.artist
+            ?: mediaItem?.mediaMetadata?.artist
+            ?: mediaItem?.mediaMetadata?.albumArtist
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.artist
+        )?.toString()
+    }
+
+    private fun getGenre(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return mediaItem?.mediaMetadata?.genre?.toString()
+    }
+
+    private fun getAlbumTitle(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return (mediaItem?.mediaMetadata?.albumTitle
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.albumTitle)?.toString()
+    }
+
+    private fun getArtworkUrl(index: Int? = null): String? {
+        val isCurrent = index == null || index == player.currentMediaItemIndex
+        return (
+            (if (isCurrent) notificationMetadata else null)?.artworkUrl
+            ?: getMediaItemArtworkUrl(index)
+        )?.toString()
+    }
+
+    private fun getMediaItemArtworkUrl(index: Int? = null): String? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return (
+            mediaItem?.mediaMetadata?.artworkUri
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.artwork
+        )?.toString()
+    }
+
+    private fun getArtworkBitmap(index: Int? = null): Bitmap? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        val isCurrent = index == null || index == player.currentMediaItemIndex
+        val artworkData = player.mediaMetadata.artworkData
+        return (
+            if (isCurrent && notificationMetadata?.artworkUrl != null)
+                notificationMetadataBitmap
+            else
+                null
+        ) ?: (
+            if (isCurrent && artworkData != null)
+                BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+            else
+                null
+        ) ?: mediaItem?.getAudioItemHolder()?.artworkBitmap
+    }
+
+    private fun getDuration(index: Int? = null): Long? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return mediaItem?.getAudioItemHolder()?.audioItem?.duration ?: -1
+    }
+
+    private fun getUserRating(index: Int? = null): RatingCompat? {
+        val mediaItem = if (index == null) player.getCurrentMediaItem()
+            else player.getMediaItemAt(index)
+        return RatingCompat.fromRating(mediaItem?.mediaMetadata?.userRating)
+    }
 
     var showPlayPauseButton = false
         set(value) {
@@ -168,10 +315,6 @@ class NotificationManager internal constructor(
     var forwardIcon: Int? = null
     var rewindIcon: Int? = null
 
-    private fun getCurrentItemHolder(): AudioItemHolder? {
-        return player?.currentMediaItem?.localConfiguration?.tag as AudioItemHolder?
-    }
-
     init {
         mediaSessionConnector.setQueueNavigator(
             object : TimelineQueueNavigator(mediaSession) {
@@ -195,40 +338,54 @@ class NotificationManager internal constructor(
                     player: Player,
                     windowIndex: Int
                 ): MediaDescriptionCompat {
-                    val currentNotificationMetadata =
-                        if (windowIndex == player.currentMediaItemIndex)
-                            notificationMetadata else null
-                    val mediaItem = player.getMediaItemAt(windowIndex)
-                    val audioItemHolder = (mediaItem.localConfiguration?.tag as AudioItemHolder)
-                    var title = currentNotificationMetadata?.title ?: mediaItem.mediaMetadata.title
-                    ?: audioItemHolder.audioItem.title
-                    var artist =
-                        currentNotificationMetadata?.artist ?: mediaItem.mediaMetadata.artist
-                        ?: audioItemHolder.audioItem.artist
+                    val title = getTitle(windowIndex)
+                    val artist = getArtist(windowIndex)
                     return MediaDescriptionCompat.Builder().apply {
                         setTitle(title)
                         setSubtitle(artist)
                         setExtras(Bundle().apply {
-                            putString(MediaMetadataCompat.METADATA_KEY_TITLE, title as String?)
-                            putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist as String?)
+                            title?.let {
+                                putString(MediaMetadataCompat.METADATA_KEY_TITLE, it)
+                            }
+                            artist?.let {
+                                putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
+                            }
                         })
                     }.build()
                 }
             }
         )
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
+    }
 
-        scope.launch {
-            // Throttle for Android rate limits when updating a notification
-            // https://developer.android.com/develop/ui/views/notifications#limits
-            notificationMetadataFlow.throttle(androidNotificationThrottleInterval)
-                .distinctUntilChanged()
-                .onEach {
-                    invalidate()
-                }.debounce(NOTIFICATION_UPDATE_DELAY_AFTER_THROTTLE).collectLatest {
-                    invalidate()
-                }
-        }
+    public fun getMediaMetadataCompat(): MediaMetadataCompat {
+        return MediaMetadataCompat.Builder().apply {
+            getArtist()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
+            }
+            getTitle()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_TITLE, it)
+            }
+            getAlbumTitle()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_ALBUM, it)
+            }
+            getGenre()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_GENRE, it)
+            }
+            getDuration()?.let {
+                putLong(MediaMetadataCompat.METADATA_KEY_DURATION, it)
+            }
+            getArtworkUrl()?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_ART_URI, it)
+            }
+            getArtworkBitmap()?.let {
+                putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it);
+                putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, it);
+            }
+            getUserRating()?.let {
+                putRating(MediaMetadataCompat.METADATA_KEY_RATING, it)
+            }
+        }.build()
     }
 
     private fun createNotificationAction(
@@ -316,17 +473,30 @@ class NotificationManager internal constructor(
     }
 
     fun invalidate() {
-        internalNotificationManager?.invalidate()
-        mediaSessionConnector.invalidateMediaSessionQueue()
-        mediaSessionConnector.invalidateMediaSessionMetadata()
+        if (invalidateThrottleCount++ == 0) {
+            scope.launch {
+                internalNotificationManager?.invalidate()
+                mediaSessionConnector.invalidateMediaSessionQueue()
+                mediaSessionConnector.invalidateMediaSessionMetadata()
+                delay(300)
+                val wasThrottled = invalidateThrottleCount > 1
+                invalidateThrottleCount = 0
+                if (wasThrottled) {
+                    invalidate()
+                }
+            }
+        }
     }
 
     /**
-     * Create a media player notification that automatically updates.
-     *
-     * **NOTE:** You should only call this once. Subsequent calls will result in an error.
+     * Create a media player notification that automatically updates. Call this
+     * method again with a different configuration to update the notification.
      */
     fun createNotification(config: NotificationConfig) = scope.launch {
+        if (isNotificationButtonsChanged(config.buttons)) {
+            hideNotification()
+        }
+
         buttons.apply {
             clear()
             addAll(config.buttons)
@@ -335,6 +505,120 @@ class NotificationManager internal constructor(
         stopIcon = null
         forwardIcon = null
         rewindIcon = null
+
+        updateMediaSessionPlaybackActions()
+
+        pendingIntent = config.pendingIntent
+        showPlayPauseButton = false
+        showForwardButton = false
+        showRewindButton = false
+        showNextButton = false
+        showPreviousButton = false
+        showStopButton = false
+        if (internalNotificationManager == null) {
+            internalNotificationManager =
+                PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID)
+                    .apply {
+                        setChannelNameResourceId(R.string.playback_channel_name)
+                        setMediaDescriptionAdapter(descriptionAdapter)
+                        setCustomActionReceiver(customActionReceiver)
+                        setNotificationListener(this@NotificationManager)
+
+                        for (button in buttons) {
+                            if (button == null) continue
+                            when (button) {
+                                is NotificationButton.PLAY_PAUSE -> {
+                                    button.playIcon?.let { setPlayActionIconResourceId(it) }
+                                    button.pauseIcon?.let { setPauseActionIconResourceId(it) }
+                                }
+
+                                is NotificationButton.STOP -> button.icon?.let {
+                                    setStopActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                is NotificationButton.FORWARD -> button.icon?.let {
+                                    setFastForwardActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                is NotificationButton.BACKWARD -> button.icon?.let {
+                                    setRewindActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                is NotificationButton.NEXT -> button.icon?.let {
+                                    setNextActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                is NotificationButton.PREVIOUS -> button.icon?.let {
+                                    setPreviousActionIconResourceId(
+                                        it
+                                    )
+                                }
+
+                                else -> {}
+                            }
+                        }
+                    }.build().apply {
+                        setMediaSessionToken(mediaSession.sessionToken)
+                        setPlayer(player)
+                    }
+        }
+        setupInternalNotificationManager(config)
+    }
+
+    private fun isNotificationButtonsChanged(newButtons: List<NotificationButton>): Boolean {
+        val currentNotificationButtonsMapByType = buttons.filterNotNull().associateBy { it::class }
+        return newButtons.any { newButton ->
+            when (newButton) {
+                is NotificationButton.PLAY_PAUSE -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.PLAY_PAUSE::class] as? NotificationButton.PLAY_PAUSE).let { currentButton ->
+                        newButton.pauseIcon != currentButton?.pauseIcon || newButton.playIcon != currentButton?.playIcon
+                    }
+                }
+
+                is NotificationButton.STOP -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.STOP::class] as? NotificationButton.STOP).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.FORWARD -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.FORWARD::class] as? NotificationButton.FORWARD).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.BACKWARD -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.BACKWARD::class] as? NotificationButton.BACKWARD).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.NEXT -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.NEXT::class] as? NotificationButton.NEXT).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                is NotificationButton.PREVIOUS -> {
+                    (currentNotificationButtonsMapByType[NotificationButton.PREVIOUS::class] as? NotificationButton.PREVIOUS).let { currentButton ->
+                        newButton.icon != currentButton?.icon
+                    }
+                }
+
+                else -> false
+            }
+        }
+    }
+
+    private fun updateMediaSessionPlaybackActions() {
         mediaSessionConnector.setEnabledPlaybackActions(
             buttons.fold(
                 PlaybackStateCompat.ACTION_SET_REPEAT_MODE
@@ -366,62 +650,6 @@ class NotificationManager internal constructor(
                 }
             }
         )
-        descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
-            override fun getCurrentContentTitle(player: Player): CharSequence {
-                return notificationMetadata?.title
-                    ?: player.mediaMetadata.title
-                    ?: ""
-            }
-
-            override fun createCurrentContentIntent(player: Player): PendingIntent? {
-                return config.pendingIntent
-            }
-
-            override fun getCurrentContentText(player: Player): CharSequence? {
-                return notificationMetadata?.artist
-                    ?: player.mediaMetadata.artist
-                    ?: player.mediaMetadata.albumArtist
-                    ?: ""
-            }
-
-            override fun getCurrentSubText(player: Player): CharSequence? {
-                return player.mediaMetadata.displayTitle
-            }
-
-            override fun getCurrentLargeIcon(
-                player: Player,
-                callback: PlayerNotificationManager.BitmapCallback,
-            ): Bitmap? {
-                val holder = getCurrentItemHolder() ?: return null
-                val source = notificationMetadata?.artworkUrl ?: player.mediaMetadata.artworkUri
-                val data = player.mediaMetadata.artworkData
-
-                if (notificationMetadata?.artworkUrl == null && data != null) {
-                    return BitmapFactory.decodeByteArray(data, 0, data.size)
-                }
-
-                if (source == null) {
-                    return null
-                }
-
-                if (holder.artworkBitmap != null) {
-                    return holder.artworkBitmap
-                }
-
-                context.imageLoader.enqueue(
-                    ImageRequest.Builder(context)
-                        .data(source)
-                        .target { result ->
-                            val bitmap = (result as BitmapDrawable).bitmap
-                            holder.artworkBitmap = bitmap
-                            callback.onBitmap(bitmap)
-                        }
-                        .build()
-                )
-                return holder.artworkBitmap
-            }
-        }
-
         if (needsCustomActionsToAddMissingButtons) {
             val customActionProviders = buttons
                 .sortedBy {
@@ -450,97 +678,53 @@ class NotificationManager internal constructor(
                 }
             mediaSessionConnector.setCustomActionProviders(*customActionProviders.toTypedArray())
         }
-
-        internalNotificationManager =
-            PlayerNotificationManager.Builder(context, NOTIFICATION_ID, CHANNEL_ID)
-                .apply {
-                    setChannelNameResourceId(R.string.playback_channel_name)
-                    setMediaDescriptionAdapter(descriptionAdapter)
-                    setCustomActionReceiver(customActionReceiver)
-                    setNotificationListener(this@NotificationManager)
-
-                    internalNotificationManager.apply {
-                        showPlayPauseButton = false
-                        showForwardButton = false
-                        showRewindButton = false
-                        showNextButton = false
-                        showPreviousButton = false
-                        showStopButton = false
-                    }
-
-                    for (button in buttons) {
-                        if (button == null) continue
-                        when (button) {
-                            is NotificationButton.PLAY_PAUSE -> {
-                                button.playIcon?.let { setPlayActionIconResourceId(it) }
-                                button.pauseIcon?.let { setPauseActionIconResourceId(it) }
-                            }
-                            is NotificationButton.STOP -> button.icon?.let {
-                                setStopActionIconResourceId(
-                                    it
-                                )
-                            }
-                            is NotificationButton.FORWARD -> button.icon?.let {
-                                setFastForwardActionIconResourceId(
-                                    it
-                                )
-                            }
-                            is NotificationButton.BACKWARD -> button.icon?.let {
-                                setRewindActionIconResourceId(
-                                    it
-                                )
-                            }
-                            is NotificationButton.NEXT -> button.icon?.let {
-                                setNextActionIconResourceId(
-                                    it
-                                )
-                            }
-                            is NotificationButton.PREVIOUS -> button.icon?.let {
-                                setPreviousActionIconResourceId(
-                                    it
-                                )
-                            }
-                            else -> {}
-                        }
-                    }
-                }.build().apply {
-                    setColor(config.accentColor ?: Color.TRANSPARENT)
-                    config.smallIcon?.let { setSmallIcon(it) }
-                    for (button in buttons) {
-                        if (button == null) continue
-                        when (button) {
-                            is NotificationButton.PLAY_PAUSE -> {
-                                showPlayPauseButton = true
-                            }
-                            is NotificationButton.STOP -> {
-                                showStopButton = true
-                            }
-                            is NotificationButton.FORWARD -> {
-                                showForwardButton = true
-                                showForwardButtonCompact = button.isCompact
-                            }
-                            is NotificationButton.BACKWARD -> {
-                                showRewindButton = true
-                                showRewindButtonCompact = button.isCompact
-                            }
-                            is NotificationButton.NEXT -> {
-                                showNextButton = true
-                                showNextButtonCompact = button.isCompact
-                            }
-                            is NotificationButton.PREVIOUS -> {
-                                showPreviousButton = true
-                                showPreviousButtonCompact = button.isCompact
-                            }
-                            else -> {}
-                        }
-                    }
-                    setMediaSessionToken(mediaSession.sessionToken)
-                    setPlayer(player)
-                }
     }
 
-    fun hideNotification() = scope.launch {
+    private fun setupInternalNotificationManager(config: NotificationConfig) {
+        internalNotificationManager?.run {
+            setColor(config.accentColor ?: Color.TRANSPARENT)
+            config.smallIcon?.let { setSmallIcon(it) }
+            for (button in buttons) {
+                if (button == null) continue
+                when (button) {
+                    is NotificationButton.PLAY_PAUSE -> {
+                        showPlayPauseButton = true
+                    }
+
+                    is NotificationButton.STOP -> {
+                        showStopButton = true
+                    }
+
+                    is NotificationButton.FORWARD -> {
+                        showForwardButton = true
+                        showForwardButtonCompact = button.isCompact
+                    }
+
+                    is NotificationButton.BACKWARD -> {
+                        showRewindButton = true
+                        showRewindButtonCompact = button.isCompact
+                    }
+
+                    is NotificationButton.NEXT -> {
+                        showNextButton = true
+                        showNextButtonCompact = button.isCompact
+                    }
+
+                    is NotificationButton.PREVIOUS -> {
+                        showPreviousButton = true
+                        showPreviousButtonCompact = button.isCompact
+                    }
+
+                    else -> {}
+                }
+            }
+        }
+    }
+
+    fun hideNotification() {
         internalNotificationManager?.setPlayer(null)
+        internalNotificationManager = null
+        invalidate()
     }
 
     override fun onNotificationPosted(
@@ -601,7 +785,5 @@ class NotificationManager internal constructor(
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_rewind
         private val DEFAULT_FORWARD_ICON =
             com.google.android.exoplayer2.ui.R.drawable.exo_notification_fastforward
-
-        private const val NOTIFICATION_UPDATE_DELAY_AFTER_THROTTLE = 1000L
     }
 }
