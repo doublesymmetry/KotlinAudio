@@ -16,7 +16,7 @@ package com.doublesymmetry.kotlinaudio.models
 sealed class Capability(open val showInNotification: Boolean = true) {
     data class PlayPause(
         override val showInNotification: Boolean = true,
-        val notificationOptions: NofiticationPlayPauseActionOptions? = null
+        val notificationOptions: NofiticationPlayPauseActionOptions = NofiticationPlayPauseActionOptions(isCompact = true)
     ) : Capability()
 
     object PlayFromId : Capability(showInNotification = false)
@@ -34,22 +34,22 @@ sealed class Capability(open val showInNotification: Boolean = true) {
 
     data class Next(
         override val showInNotification: Boolean = true,
-        val notificationOptions: NofiticationActionOptions? = null
+        val notificationOptions: NofiticationActionOptions = NofiticationActionOptions(isCompact = true)
     ) : Capability()
 
     data class Previous(
         override val showInNotification: Boolean = true,
-        val notificationOptions: NofiticationActionOptions? = null
+        val notificationOptions: NofiticationActionOptions = NofiticationActionOptions(isCompact = true)
     ) : Capability()
 
     data class Forward(
         override val showInNotification: Boolean = true,
-        val notificationOptions: NofiticationActionOptions? = null
+        val notificationOptions: NofiticationActionOptions = NofiticationActionOptions(isCompact = true)
     ) : Capability()
 
     data class Backward(
         override val showInNotification: Boolean = true,
-        val notificationOptions: NofiticationActionOptions? = null
+        val notificationOptions: NofiticationActionOptions = NofiticationActionOptions(isCompact = true)
     ) : Capability()
 
     data class SetRating(val type: Int) : Capability(showInNotification = false)

@@ -139,10 +139,10 @@ class FirstFragment : Fragment() {
         val capabilitiesConfig = CapabilitiesConfig(
             capabilities = listOf(
                 Capability.PlayPause(),
-                Capability.Next(notificationOptions = NofiticationActionOptions(isCompact = true)),
-                Capability.Previous(notificationOptions = NofiticationActionOptions(isCompact = true)),
-                Capability.Forward(notificationOptions = NofiticationActionOptions(isCompact = true)),
-                Capability.Backward(notificationOptions = NofiticationActionOptions(isCompact = true, icon = com.google.android.exoplayer2.ui.R.drawable.exo_icon_circular_play)),
+                Capability.Next(),
+                Capability.Previous(),
+                Capability.Forward(notificationOptions = NofiticationActionOptions(isCompact = false)),
+                Capability.Backward(notificationOptions = NofiticationActionOptions(isCompact = false, icon = com.google.android.exoplayer2.ui.R.drawable.exo_icon_circular_play)),
                 Capability.SeekTo
             ),
             notificationOptions = NotificationOptions(
