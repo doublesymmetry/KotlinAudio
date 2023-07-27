@@ -52,7 +52,7 @@ sealed class Capability(open val showInNotification: Boolean = true) {
         val notificationOptions: NofiticationActionOptions? = null
     ) : Capability()
 
-    data class SetRating(val type: Int) : Capability()
+    data class SetRating(val type: Int) : Capability(showInNotification = false)
 }
 
 
@@ -63,12 +63,5 @@ data class CapabilitiesConfig(
 
 /** Custom extension to filter out only those capabilities that are supported by the notification */
 fun List<Capability>.filterForNotification(): List<Capability> {
-    return this.filter {
-        (it is Capability.PlayPause && it.showInNotification)
-                || (it is Capability.Stop && it.showInNotification)
-                || (it is Capability.Next && it.showInNotification)
-                || (it is Capability.Previous && it.showInNotification)
-                || (it is Capability.Forward && it.showInNotification)
-                || (it is Capability.Backward && it.showInNotification)
-    } ?: emptyList()
+    return this.filter { it.showInNotification }
 }
