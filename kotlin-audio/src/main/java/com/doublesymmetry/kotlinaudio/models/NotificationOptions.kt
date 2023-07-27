@@ -19,7 +19,11 @@ data class NotificationOptions(
 data class NofiticationActionOptions(
     @DrawableRes val icon: Int? = null,
     val isCompact: Boolean = false
-)
+) {
+    companion object {
+        val DEFAULT = NofiticationActionOptions(isCompact = true)
+    }
+}
 
 /** Used to configure the properties of a standard notification button */
 data class NofiticationIconActionOptions(
@@ -31,4 +35,8 @@ data class NofiticationPlayPauseActionOptions(
     @DrawableRes val playIcon: Int? = null,
     @DrawableRes var pauseIcon: Int? = null,
     val isCompact: Boolean = false
-)
+) {
+    companion object {
+        val DEFAULT = NofiticationPlayPauseActionOptions(isCompact = true)
+    }
+}
