@@ -9,25 +9,25 @@ import androidx.annotation.DrawableRes
  * @param smallIcon The small icon of the notification which is also shown in the system status bar.
  * @param pendingIntent The [PendingIntent] that would be called when tapping on the notification itself.
  */
-data class NotificationConfig(
+data class NotificationOptions(
     val accentColor: Int? = null,
     @DrawableRes val smallIcon: Int? = null,
     val pendingIntent: PendingIntent? = null
 )
 
 /** Used to configure the properties of a standard notification button */
-data class NofiticationActionConfig(
+data class NofiticationActionOptions(
     @DrawableRes val icon: Int? = null,
     val isCompact: Boolean = false
 )
 
 /** Used to configure the properties of a standard notification button */
-data class NofiticationIconActionConfig(
+data class NofiticationIconActionOptions(
     @DrawableRes val icon: Int? = null,
 )
 
 /** Used to configure the properties of a standard notification button */
-data class NofiticationPlayPauseActionConfig(
+data class NofiticationPlayPauseActionOptions(
     @DrawableRes val playIcon: Int? = null,
     @DrawableRes var pauseIcon: Int? = null,
     val isCompact: Boolean = false
