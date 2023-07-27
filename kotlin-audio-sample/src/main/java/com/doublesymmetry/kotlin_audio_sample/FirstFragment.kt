@@ -136,17 +136,21 @@ class FirstFragment : Fragment() {
     }
 
     private fun setupNotification() {
-        val notificationConfig = NotificationConfig(
-            listOf(
-                NotificationButton.PLAY_PAUSE(),
-                NotificationButton.NEXT(isCompact = true),
-                NotificationButton.PREVIOUS(isCompact = true),
-                NotificationButton.BACKWARD(isCompact = true),
-                NotificationButton.FORWARD(isCompact = true, icon = com.google.android.exoplayer2.ui.R.drawable.exo_icon_circular_play),
-                NotificationButton.SEEK_TO
-            ), accentColor = null, smallIcon = null, pendingIntent = null
+        val capabilitiesConfig = CapabilitiesConfig(
+            capabilities = listOf(
+                Capability.PLAY_PAUSE(),
+                Capability.NEXT(notificationConfig = NofiticationActionConfig(isCompact = true)),
+                Capability.PREVIOUS(notificationConfig = NofiticationActionConfig(isCompact = true)),
+                Capability.FORWARD(notificationConfig = NofiticationActionConfig(isCompact = true)),
+                Capability.BACKWARD(notificationConfig = NofiticationActionConfig(isCompact = true, icon = com.google.android.exoplayer2.ui.R.drawable.exo_icon_circular_play)),
+                Capability.SEEK_TO
+            ),
+            notificationConfig = NotificationConfig(
+                accentColor = null, smallIcon = null, pendingIntent = null
+            )
         )
-        player.notificationManager.createNotification(notificationConfig)
+
+        player.notificationManager.createNotification(capabilitiesConfig)
     }
 
     override fun onDestroyView() {
