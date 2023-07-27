@@ -29,6 +29,6 @@ data class NofiticationIconActionConfig(
 /** Used to configure the properties of a standard notification button */
 data class NofiticationPlayPauseActionConfig(
     @DrawableRes val playIcon: Int? = null,
-    @DrawableRes val pauseIcon: Int? = null,
+    @DrawableRes var pauseIcon: Int? = null,
     val isCompact: Boolean = false
 )

@@ -352,7 +352,7 @@ class NotificationManager internal constructor(
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
     }
 
-    public fun getMediaMetadataCompat(): MediaMetadataCompat {
+    fun getMediaMetadataCompat(): MediaMetadataCompat {
         return MediaMetadataCompat.Builder().apply {
             getArtist()?.let {
                 putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
@@ -648,7 +648,7 @@ class NotificationManager internal constructor(
         }
     }
 
-    private fun hideNotification() {
+    fun hideNotification() {
         internalNotificationManager?.setPlayer(null)
         internalNotificationManager = null
         invalidate()
