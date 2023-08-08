@@ -55,6 +55,7 @@ import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.Player.Listener
+import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -127,6 +128,9 @@ abstract class BaseAudioPlayer internal constructor(
             return if (exoPlayer.duration == C.TIME_UNSET) 0
             else exoPlayer.duration
         }
+
+    val isCurrentMediaItemLive: Boolean
+        get() = exoPlayer.isCurrentMediaItemLive
 
     private var oldPosition = 0L
 
