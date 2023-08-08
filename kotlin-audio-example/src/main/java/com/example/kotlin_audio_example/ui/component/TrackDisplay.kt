@@ -29,6 +29,7 @@ fun TrackDisplay(
     position: Long,
     duration: Long,
     isLive: Boolean,
+    onSeek: (Long) -> Unit = {},
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (artwork.isEmpty())
@@ -72,7 +73,9 @@ fun TrackDisplay(
                     } else {
                         position.toFloat() / duration.toFloat()
                     },
-                    onValueChange = { /*TODO*/ },
+                    onValueChange = {
+                        onSeek((it * duration).toLong())
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 16.dp, start = 8.dp, end = 8.dp)

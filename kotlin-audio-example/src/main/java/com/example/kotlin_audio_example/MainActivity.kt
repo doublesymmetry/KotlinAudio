@@ -27,7 +27,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
 import com.doublesymmetry.kotlinaudio.models.DefaultAudioItem
+import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
 import com.doublesymmetry.kotlinaudio.models.MediaType
+import com.doublesymmetry.kotlinaudio.models.NotificationButton
+import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.RepeatMode
 import com.doublesymmetry.kotlinaudio.models.PlayerConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
@@ -37,6 +40,8 @@ import com.example.kotlin_audio_example.ui.theme.KotlinAudioTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import timber.log.Timber
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.seconds
 
 class MainActivity : ComponentActivity() {
@@ -55,6 +60,8 @@ class MainActivity : ComponentActivity() {
         player.add(tracks)
         player.playerOptions.repeatMode = RepeatMode.ALL
         player.play()
+
+        setupNotification()
 
         setContent {
             val state = player.event.stateChange.collectAsState(initial = AudioPlayerState.IDLE)
@@ -81,7 +88,8 @@ class MainActivity : ComponentActivity() {
                     } else {
                         player.play()
                     }
-                }
+                },
+                onSeek = { player.seek(it, TimeUnit.MILLISECONDS) }
             )
 
             LaunchedEffect(key1 = player, key2 = player.event.audioItemTransition) {
@@ -92,6 +100,23 @@ class MainActivity : ComponentActivity() {
                         artwork = player.currentItem?.artwork ?: ""
                         duration =  player.currentItem?.duration ?: 0
                         isLive = player.isCurrentMediaItemLive
+                    }
+                    .launchIn(this)
+
+                player.event.onPlayerActionTriggeredExternally
+                    .onEach {
+                        when (it) {
+                            MediaSessionCallback.PLAY -> player.play()
+                            MediaSessionCallback.PAUSE -> player.pause()
+                            MediaSessionCallback.NEXT -> player.next()
+                            MediaSessionCallback.PREVIOUS -> player.previous()
+                            MediaSessionCallback.STOP -> player.stop()
+                            is MediaSessionCallback.SEEK -> player.seek(
+                                it.positionMs,
+                                TimeUnit.MILLISECONDS
+                            )
+                            else -> Timber.d("Event not handled")
+                        }
                     }
                     .launchIn(this)
             }
@@ -108,6 +133,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun setupNotification() {
+        val notificationConfig = NotificationConfig(
+            listOf(
+                NotificationButton.PLAY_PAUSE(),
+                NotificationButton.NEXT(isCompact = true),
+                NotificationButton.PREVIOUS(isCompact = true),
+                NotificationButton.SEEK_TO
+            ), accentColor = null, smallIcon = null, pendingIntent = null
+        )
+        player.notificationManager.createNotification(notificationConfig)
     }
 
     companion object {
@@ -174,6 +211,7 @@ fun Inner(
     onNext: () -> Unit = {},
     isPaused: Boolean,
     onPlayPause: () -> Unit = {},
+    onSeek: (Long) -> Unit = {},
 ) {
     KotlinAudioTheme {
         // A surface container using the 'background' color from the theme
@@ -201,6 +239,7 @@ fun Inner(
                     position = position,
                     duration = duration,
                     isLive = isLive,
+                    onSeek = onSeek,
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 PlayerControls(
