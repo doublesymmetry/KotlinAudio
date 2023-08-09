@@ -94,127 +94,84 @@ class NotificationManager internal constructor(
     private val scope = MainScope()
     private val buttons = mutableSetOf<NotificationButton?>()
     private var invalidateThrottleCount = 0
-    private var notificationMetadataBitmap: Bitmap? = null
-    private var notificationMetadataArtworkDisposable: Disposable? = null
     private var iconPlaceholder = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
-    var notificationMetadata: NotificationMetadata? = null
-        set(value) {
-            if (value == null) {
-                val changed = field != null
-                if (changed) {
-                    field = null
-                    notificationMetadataBitmap = null
-                    invalidate()
-                }
-                return
-            }
-            val holder = player.currentMediaItem?.getAudioItemHolder()
-            val artworkChanged = field?.artworkUrl != value.artworkUrl
-                && holder?.audioItem?.artwork != value.artworkUrl
-            val titleChanged = holder?.audioItem?.title != value.title
-            val artistChanged = holder?.audioItem?.artist != value.artist
 
-            if (artworkChanged) {
-                notificationMetadataBitmap = null
-                // Cancel loading previous artwork:
-                notificationMetadataArtworkDisposable?.dispose()
-                if (value.artworkUrl != null) {
-                    notificationMetadataArtworkDisposable = context.imageLoader.enqueue(
-                        ImageRequest.Builder(context)
-                            .data(value.artworkUrl)
-                            .target { result ->
-                                notificationMetadataBitmap = (result as BitmapDrawable).bitmap
-                                invalidate()
-                            }
-                            .build()
-                    )
-                } else {
-                    notificationMetadataArtworkDisposable = null
-                }
-            }
-            if (artworkChanged || titleChanged || artistChanged) {
-                field = value
-                invalidate()
-            }
-        }
+    // This causes the builder to opt for audio item holder data over media item data
+    // This might be used when a user attempts to manually set the metadata, in which
+    // case we want to prioritize that data.
+    internal var ignoreMediaMetadata = false
 
     private fun getTitle(index: Int? = null): String? {
-        val mediaItem = if (index == null) player.getCurrentMediaItem()
-            else player.getMediaItemAt(index)
-        val isCurrent = index == null || index == player.currentMediaItemIndex
-        return ((if (isCurrent) notificationMetadata else null)?.title
-            ?: mediaItem?.mediaMetadata?.title
-            ?: mediaItem?.getAudioItemHolder()?.audioItem?.title)?.toString()
+        val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
+
+        val audioItem = mediaItem?.getAudioItemHolder()?.audioItem
+        return if (ignoreMediaMetadata) {
+            audioItem?.title
+        } else {
+            mediaItem?.mediaMetadata?.title?.toString()
+                ?: audioItem?.title
+        }
     }
 
     private fun getArtist(index: Int? = null): String? {
-        val mediaItem = if (index == null) player.getCurrentMediaItem()
-            else player.getMediaItemAt(index)
-        val isCurrent = index == null || index == player.currentMediaItemIndex
-        return (
-            (if (isCurrent) notificationMetadata else null)?.artist
-            ?: mediaItem?.mediaMetadata?.artist
-            ?: mediaItem?.mediaMetadata?.albumArtist
-            ?: mediaItem?.getAudioItemHolder()?.audioItem?.artist
-        )?.toString()
+        val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
+        val audioItem = mediaItem?.getAudioItemHolder()?.audioItem
+
+        return if (ignoreMediaMetadata) {
+            audioItem?.artist
+        } else {
+            (mediaItem?.mediaMetadata?.artist ?: mediaItem?.mediaMetadata?.albumArtist)?.toString()
+                ?: audioItem?.artist
+        }
     }
 
     private fun getGenre(index: Int? = null): String? {
-        val mediaItem = if (index == null) player.getCurrentMediaItem()
-            else player.getMediaItemAt(index)
+        val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
         return mediaItem?.mediaMetadata?.genre?.toString()
     }
 
     private fun getAlbumTitle(index: Int? = null): String? {
-        val mediaItem = if (index == null) player.getCurrentMediaItem()
+        val mediaItem = if (index == null) player.currentMediaItem
             else player.getMediaItemAt(index)
-        return (mediaItem?.mediaMetadata?.albumTitle
-            ?: mediaItem?.getAudioItemHolder()?.audioItem?.albumTitle)?.toString()
+        return mediaItem?.mediaMetadata?.albumTitle?.toString()
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.albumTitle
     }
 
     private fun getArtworkUrl(index: Int? = null): String? {
-        val isCurrent = index == null || index == player.currentMediaItemIndex
-        return (
-            (if (isCurrent) notificationMetadata else null)?.artworkUrl
-            ?: getMediaItemArtworkUrl(index)
-        )?.toString()
+        return getMediaItemArtworkUrl(index)
     }
 
     private fun getMediaItemArtworkUrl(index: Int? = null): String? {
-        val mediaItem = if (index == null) player.getCurrentMediaItem()
-            else player.getMediaItemAt(index)
-        return (
-            mediaItem?.mediaMetadata?.artworkUri
-            ?: mediaItem?.getAudioItemHolder()?.audioItem?.artwork
-        )?.toString()
+        val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
+
+        return if (ignoreMediaMetadata) {
+            mediaItem?.getAudioItemHolder()?.audioItem?.artwork
+        } else {
+            mediaItem?.mediaMetadata?.artworkUri?.toString()
+                ?: mediaItem?.getAudioItemHolder()?.audioItem?.artwork
+        }
     }
 
     private fun getArtworkBitmap(index: Int? = null): Bitmap? {
-        val mediaItem = if (index == null) player.getCurrentMediaItem()
-            else player.getMediaItemAt(index)
+        val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
         val isCurrent = index == null || index == player.currentMediaItemIndex
         val artworkData = player.mediaMetadata.artworkData
         return (
-            if (isCurrent && notificationMetadata?.artworkUrl != null)
-                notificationMetadataBitmap
-            else
-                null
-        ) ?: (
-            if (isCurrent && artworkData != null)
-                BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
-            else
-                null
-        ) ?: mediaItem?.getAudioItemHolder()?.artworkBitmap
+                if (isCurrent && artworkData != null)
+                    BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+                else
+                    null
+                ) ?: mediaItem?.getAudioItemHolder()?.artworkBitmap
     }
 
     private fun getDuration(index: Int? = null): Long? {
-        val mediaItem = if (index == null) player.getCurrentMediaItem()
+        val mediaItem = if (index == null) player.currentMediaItem
             else player.getMediaItemAt(index)
         return mediaItem?.getAudioItemHolder()?.audioItem?.duration ?: -1
     }
 
     private fun getUserRating(index: Int? = null): RatingCompat? {
-        val mediaItem = if (index == null) player.getCurrentMediaItem()
+        val mediaItem = if (index == null) player.currentMediaItem
             else player.getMediaItemAt(index)
         return RatingCompat.fromRating(mediaItem?.mediaMetadata?.userRating)
     }

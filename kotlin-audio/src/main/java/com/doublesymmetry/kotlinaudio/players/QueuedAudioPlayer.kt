@@ -218,7 +218,7 @@ class QueuedAudioPlayer(
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue[index] = mediaSource
         if (index == currentIndex) {
-            resetNotificationMetadataIfAutomatic()
+            updateNotificationIfNecessary(ignoreMediaMetadata = true)
         }
     }
 

@@ -321,9 +321,10 @@ abstract class BaseAudioPlayer internal constructor(
         }
     }
 
-    internal fun resetNotificationMetadataIfAutomatic() {
+    internal fun updateNotificationIfNecessary(ignoreMediaMetadata: Boolean = false) {
         if (automaticallyUpdateNotificationMetadata) {
-            notificationManager.notificationMetadata = null
+            notificationManager.ignoreMediaMetadata = ignoreMediaMetadata
+            notificationManager.invalidate()
         }
     }
 
@@ -678,7 +679,7 @@ abstract class BaseAudioPlayer internal constructor(
                 )
             }
 
-            resetNotificationMetadataIfAutomatic()
+            updateNotificationIfNecessary()
         }
 
         /**
