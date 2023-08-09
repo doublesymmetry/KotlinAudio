@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -92,7 +96,7 @@ class MainActivity : ComponentActivity() {
                 onSeek = { player.seek(it, TimeUnit.MILLISECONDS) }
             )
 
-            LaunchedEffect(key1 = player, key2 = player.event.audioItemTransition) {
+            LaunchedEffect(key1 = player, key2 = player.event.audioItemTransition, key3 = player.event.onPlayerActionTriggeredExternally) {
                 player.event.audioItemTransition
                     .onEach {
                         title = player.currentItem?.title ?: ""
@@ -121,15 +125,13 @@ class MainActivity : ComponentActivity() {
                     .launchIn(this)
             }
 
-            if (player.playerState == AudioPlayerState.PLAYING) {
-                LaunchedEffect(Unit) {
-                    while(true) {
-                        position = player.position
-                        duration = player.duration
-                        isLive = player.isCurrentMediaItemLive
+            LaunchedEffect(Unit) {
+                while(true) {
+                    position = player.position
+                    duration = player.duration
+                    isLive = player.isCurrentMediaItemLive
 
-                        delay(1.seconds / 30)
-                    }
+                    delay(1.seconds / 30)
                 }
             }
         }
@@ -219,16 +221,24 @@ fun Inner(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 TopAppBar(
                     title = {
                         Text(
                             text = "Kotlin Audio Example",
                             color = MaterialTheme.colorScheme.onPrimary
                         )
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            
+                        }) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "Settings",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     },
                     colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
                 )
@@ -240,6 +250,7 @@ fun Inner(
                     duration = duration,
                     isLive = isLive,
                     onSeek = onSeek,
+                    modifier = Modifier.padding(top = 46.dp)
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 PlayerControls(
