@@ -210,8 +210,8 @@ abstract class BaseAudioPlayer internal constructor(
     private var hasAudioFocus = false
     private var wasDucking = false
 
-    protected val mediaSession = MediaSessionCompat(context, "KotlinAudioPlayer")
-    protected val mediaSessionConnector = MediaSessionConnector(mediaSession)
+    private val mediaSession = MediaSessionCompat(context, "KotlinAudioPlayer")
+    private val mediaSessionConnector = MediaSessionConnector(mediaSession)
 
     init {
         if (cacheConfig != null) {
@@ -400,12 +400,14 @@ abstract class BaseAudioPlayer internal constructor(
      * state to transition to AudioPlayerState.IDLE and the player will release the loaded media and
      * resources required for playback.
      */
+    @CallSuper
     open fun stop() {
         playerState = AudioPlayerState.STOPPED
         exoPlayer.playWhenReady = false
         exoPlayer.stop()
     }
 
+    @CallSuper
     open fun clear() {
         exoPlayer.clearMediaItems()
     }
@@ -414,7 +416,7 @@ abstract class BaseAudioPlayer internal constructor(
      * Pause playback whenever an item plays to its end.
      */
     fun setPauseAtEndOfItem(pause: Boolean) {
-        exoPlayer.setPauseAtEndOfMediaItems(pause)
+        exoPlayer.pauseAtEndOfMediaItems = pause
     }
 
     /**
@@ -567,8 +569,8 @@ abstract class BaseAudioPlayer internal constructor(
 
     override fun onAudioFocusChange(focusChange: Int) {
         Timber.d("Audio focus changed")
-        var isPermanent = focusChange == AUDIOFOCUS_LOSS
-        var isPaused = when (focusChange) {
+        val isPermanent = focusChange == AUDIOFOCUS_LOSS
+        val isPaused = when (focusChange) {
             AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> true
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> playerOptions.alwaysPauseOnInterruption
             else -> false
@@ -576,7 +578,7 @@ abstract class BaseAudioPlayer internal constructor(
         if (!playerConfig.handleAudioFocus) {
             if (isPermanent) abandonAudioFocusIfHeld()
 
-            var isDucking = focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
+            val isDucking = focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK
                     && !playerOptions.alwaysPauseOnInterruption
             if (isDucking) {
                 volumeMultiplier = 0.5f
@@ -697,7 +699,7 @@ abstract class BaseAudioPlayer internal constructor(
             for (i in 0 until events.size()) {
                 when (events[i]) {
                     Player.EVENT_PLAYBACK_STATE_CHANGED -> {
-                        var state = when (player.playbackState) {
+                        val state = when (player.playbackState) {
                             Player.STATE_BUFFERING -> AudioPlayerState.BUFFERING
                             Player.STATE_READY -> AudioPlayerState.READY
                             Player.STATE_IDLE ->
@@ -743,7 +745,7 @@ abstract class BaseAudioPlayer internal constructor(
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            var _playbackError = PlaybackError(
+            val _playbackError = PlaybackError(
                 error.errorCodeName
                     .replace("ERROR_CODE_", "")
                     .lowercase(Locale.getDefault())
