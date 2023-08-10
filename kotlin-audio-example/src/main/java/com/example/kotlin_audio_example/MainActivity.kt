@@ -9,7 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,6 +38,7 @@ import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.RepeatMode
 import com.doublesymmetry.kotlinaudio.models.PlayerConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
+import com.example.kotlin_audio_example.ui.component.ActionBottomSheet
 import com.example.kotlin_audio_example.ui.component.PlayerControls
 import com.example.kotlin_audio_example.ui.component.TrackDisplay
 import com.example.kotlin_audio_example.ui.theme.KotlinAudioTheme
@@ -47,7 +52,9 @@ import kotlin.time.Duration.Companion.seconds
 class MainActivity : ComponentActivity() {
     private lateinit var player: QueuedAudioPlayer
 
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        Timber.plant(Timber.DebugTree())
         super.onCreate(savedInstanceState)
 
         player = QueuedAudioPlayer(
@@ -72,27 +79,46 @@ class MainActivity : ComponentActivity() {
             var duration by remember { mutableStateOf(0L) }
             var isLive by remember { mutableStateOf(false) }
 
-            Inner(
-                title = title,
-                artist = artist,
-                artwork = artwork,
-                position = position,
-                duration = duration,
-                isLive = isLive,
-                onPrevious = { player.previous() },
-                onNext = { player.next() },
-                isPaused = state.value != AudioPlayerState.PLAYING,
-                onPlayPause = {
-                    if (player.playerState == AudioPlayerState.PLAYING) {
-                        player.pause()
-                    } else {
-                        player.play()
-                    }
-                },
-                onSeek = { player.seek(it, TimeUnit.MILLISECONDS) }
-            )
+            var showSheet by remember { mutableStateOf(false) }
 
-            LaunchedEffect(key1 = player, key2 = player.event.audioItemTransition) {
+            if (showSheet) {
+                ActionBottomSheet(
+                    onDismiss = { showSheet = false },
+                    onRandomMetadata = {
+                        val currentIndex = player.currentIndex
+                        val track = tracks[currentIndex].copy(
+                            title = "Random Title - ${System.currentTimeMillis()}",
+                            artwork = "https://random.imagecdn.app/800/800"
+                        )
+                        player.replaceItem(currentIndex, track)
+                    }
+                )
+            }
+
+            KotlinAudioTheme {
+                MainScreen(
+                    title = title,
+                    artist = artist,
+                    artwork = artwork,
+                    position = position,
+                    duration = duration,
+                    isLive = isLive,
+                    onPrevious = { player.previous() },
+                    onNext = { player.next() },
+                    isPaused = state.value != AudioPlayerState.PLAYING,
+                    onTopBarAction = { showSheet = true },
+                    onPlayPause = {
+                        if (player.playerState == AudioPlayerState.PLAYING) {
+                            player.pause()
+                        } else {
+                            player.play()
+                        }
+                    },
+                    onSeek = { player.seek(it, TimeUnit.MILLISECONDS) }
+                )
+            }
+
+            LaunchedEffect(key1 = player, key2 = player.event.audioItemTransition, key3 = player.event.onPlayerActionTriggeredExternally) {
                 player.event.audioItemTransition
                     .onEach {
                         title = player.currentItem?.title ?: ""
@@ -121,15 +147,13 @@ class MainActivity : ComponentActivity() {
                     .launchIn(this)
             }
 
-            if (player.playerState == AudioPlayerState.PLAYING) {
-                LaunchedEffect(Unit) {
-                    while(true) {
-                        position = player.position
-                        duration = player.duration
-                        isLive = player.isCurrentMediaItemLive
+            LaunchedEffect(Unit) {
+                while(true) {
+                    position = player.position
+                    duration = player.duration
+                    isLive = player.isCurrentMediaItemLive
 
-                        delay(1.seconds / 30)
-                    }
+                    delay(1.seconds / 30)
                 }
             }
         }
@@ -200,7 +224,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Inner(
+fun MainScreen(
     title: String,
     artist: String,
     artwork: String,
@@ -210,47 +234,53 @@ fun Inner(
     onPrevious: () -> Unit = {},
     onNext: () -> Unit = {},
     isPaused: Boolean,
+    onTopBarAction: () -> Unit = {},
     onPlayPause: () -> Unit = {},
     onSeek: (Long) -> Unit = {},
 ) {
-    KotlinAudioTheme {
-        // A surface container using the 'background' color from the theme
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "Kotlin Audio Example",
-                            color = MaterialTheme.colorScheme.onPrimary
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Kotlin Audio Example",
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                },
+                actions = {
+                    IconButton(onClick = onTopBarAction) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
-                    },
-                    colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
-                )
-                TrackDisplay(
-                    title = title,
-                    artist = artist,
-                    artwork = artwork,
-                    position = position,
-                    duration = duration,
-                    isLive = isLive,
-                    onSeek = onSeek,
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                PlayerControls(
-                    onPrevious = onPrevious,
-                    onNext = onNext,
-                    isPaused = isPaused,
-                    onPlayPause = onPlayPause,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 60.dp))
-            }
+                    }
+                },
+                colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
+            )
+            TrackDisplay(
+                title = title,
+                artist = artist,
+                artwork = artwork,
+                position = position,
+                duration = duration,
+                isLive = isLive,
+                onSeek = onSeek,
+                modifier = Modifier.padding(top = 46.dp)
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            PlayerControls(
+                onPrevious = onPrevious,
+                onNext = onNext,
+                isPaused = isPaused,
+                onPlayPause = onPlayPause,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 60.dp)
+            )
         }
     }
 }
@@ -258,7 +288,7 @@ fun Inner(
 @Composable
 fun ContentPreview() {
     KotlinAudioTheme {
-        Inner(
+        MainScreen(
             title = "Title",
             artist = "Artist",
             artwork = "",

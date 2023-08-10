@@ -29,17 +29,17 @@ fun TrackDisplay(
     position: Long,
     duration: Long,
     isLive: Boolean,
+    modifier: Modifier = Modifier,
     onSeek: (Long) -> Unit = {},
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
         if (artwork.isEmpty())
             Image(
                 painter = painterResource(id = R.drawable.ic_launcher_background),
                 contentDescription = "Album Cover",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(240.dp)
-                    .padding(top = 48.dp)
+                    .height(200.dp)
             )
         else
             AsyncImage(
@@ -63,7 +63,7 @@ fun TrackDisplay(
             Text(
                 text = "Live",
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)
+                modifier = Modifier.padding(top = 16.dp)
             )
         else
             Column {
@@ -83,7 +83,7 @@ fun TrackDisplay(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 0.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+                        .padding(start = 16.dp, end = 16.dp),
                 ) {
                     Text(
                         text = position.millisecondsToString(),
