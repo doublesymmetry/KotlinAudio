@@ -18,15 +18,16 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import coil.imageLoader
+import coil.request.CachePolicy
 import coil.request.Disposable
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.R
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
+import com.doublesymmetry.kotlinaudio.models.AudioItem
 import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
 import com.doublesymmetry.kotlinaudio.models.NotificationButton
 import com.doublesymmetry.kotlinaudio.models.NotificationConfig
-import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.NotificationState
 import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.google.android.exoplayer2.Player
@@ -68,7 +69,7 @@ class NotificationManager internal constructor(
             player: Player,
             callback: PlayerNotificationManager.BitmapCallback,
         ): Bitmap? {
-            val bitmap = getArtworkBitmap()
+            val bitmap = getCachedArtworkBitmap()
             if (bitmap != null) {
                 return bitmap
             }
@@ -78,6 +79,8 @@ class NotificationManager internal constructor(
                 context.imageLoader.enqueue(
                     ImageRequest.Builder(context)
                         .data(artwork)
+                        .memoryCachePolicy(CachePolicy.DISABLED)
+                        .diskCachePolicy(CachePolicy.WRITE_ONLY)
                         .target { result ->
                             val resultBitmap = (result as BitmapDrawable).bitmap
                             holder?.artworkBitmap = resultBitmap
@@ -96,33 +99,55 @@ class NotificationManager internal constructor(
     private var invalidateThrottleCount = 0
     private var iconPlaceholder = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888)
 
-    // This causes the builder to opt for audio item holder data over media item data
-    // This might be used when a user attempts to manually set the metadata, in which
-    // case we want to prioritize that data.
-    internal var ignoreMediaMetadata = false
+    private var notificationMetadataBitmap: Bitmap? = null
+    private var notificationMetadataArtworkDisposable: Disposable? = null
+
+    /**
+     * The item that should be used for the notification
+     * This is used when the user manually sets the notification item
+     */
+    internal var overrideAudioItem: AudioItem? = null
+        set(value) {
+            notificationMetadataBitmap = null
+
+            if (field != value) {
+                if (value?.artwork != null) {
+                    notificationMetadataArtworkDisposable?.dispose()
+                    notificationMetadataArtworkDisposable = context.imageLoader.enqueue(
+                        ImageRequest.Builder(context)
+                            .data(value.artwork)
+                            .memoryCachePolicy(CachePolicy.DISABLED)
+                            .diskCachePolicy(CachePolicy.WRITE_ONLY)
+                            .target { result ->
+                                notificationMetadataBitmap = (result as BitmapDrawable).bitmap
+                                invalidate()
+                            }
+                            .build()
+                    )
+                }
+            }
+
+            field = value
+            invalidate()
+        }
 
     private fun getTitle(index: Int? = null): String? {
         val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
 
         val audioItem = mediaItem?.getAudioItemHolder()?.audioItem
-        return if (ignoreMediaMetadata) {
-            audioItem?.title
-        } else {
-            mediaItem?.mediaMetadata?.title?.toString()
-                ?: audioItem?.title
-        }
+        return overrideAudioItem?.title
+            ?:mediaItem?.mediaMetadata?.title?.toString()
+            ?: audioItem?.title
     }
 
     private fun getArtist(index: Int? = null): String? {
         val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
         val audioItem = mediaItem?.getAudioItemHolder()?.audioItem
 
-        return if (ignoreMediaMetadata) {
-            audioItem?.artist
-        } else {
-            (mediaItem?.mediaMetadata?.artist ?: mediaItem?.mediaMetadata?.albumArtist)?.toString()
-                ?: audioItem?.artist
-        }
+        return overrideAudioItem?.artist
+            ?: mediaItem?.mediaMetadata?.artist?.toString()
+            ?: mediaItem?.mediaMetadata?.albumArtist?.toString()
+            ?: audioItem?.artist
     }
 
     private fun getGenre(index: Int? = null): String? {
@@ -131,8 +156,7 @@ class NotificationManager internal constructor(
     }
 
     private fun getAlbumTitle(index: Int? = null): String? {
-        val mediaItem = if (index == null) player.currentMediaItem
-            else player.getMediaItemAt(index)
+        val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
         return mediaItem?.mediaMetadata?.albumTitle?.toString()
             ?: mediaItem?.getAudioItemHolder()?.audioItem?.albumTitle
     }
@@ -144,24 +168,28 @@ class NotificationManager internal constructor(
     private fun getMediaItemArtworkUrl(index: Int? = null): String? {
         val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
 
-        return if (ignoreMediaMetadata) {
-            mediaItem?.getAudioItemHolder()?.audioItem?.artwork
-        } else {
-            mediaItem?.mediaMetadata?.artworkUri?.toString()
-                ?: mediaItem?.getAudioItemHolder()?.audioItem?.artwork
-        }
+        return overrideAudioItem?.artwork
+            ?: mediaItem?.mediaMetadata?.artworkUri?.toString()
+            ?: mediaItem?.getAudioItemHolder()?.audioItem?.artwork
     }
 
-    private fun getArtworkBitmap(index: Int? = null): Bitmap? {
+    /**
+     * Returns the cached artwork bitmap for the current media item.
+     * Bitmap might be cached if the media item has extracted one from the media file
+     * or if a user is setting custom data for the notification.
+     */
+    private fun getCachedArtworkBitmap(index: Int? = null): Bitmap? {
         val mediaItem = if (index == null) player.currentMediaItem else player.getMediaItemAt(index)
         val isCurrent = index == null || index == player.currentMediaItemIndex
         val artworkData = player.mediaMetadata.artworkData
-        return (
-                if (isCurrent && artworkData != null)
-                    BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
-                else
-                    null
-                ) ?: mediaItem?.getAudioItemHolder()?.artworkBitmap
+
+        return if (isCurrent && overrideAudioItem != null) {
+            notificationMetadataBitmap
+        } else if (isCurrent && artworkData != null) {
+            BitmapFactory.decodeByteArray(artworkData, 0, artworkData.size)
+        } else {
+            mediaItem?.getAudioItemHolder()?.artworkBitmap
+        }
     }
 
     private fun getDuration(index: Int? = null): Long? {
@@ -335,7 +363,7 @@ class NotificationManager internal constructor(
             getArtworkUrl()?.let {
                 putString(MediaMetadataCompat.METADATA_KEY_ART_URI, it)
             }
-            getArtworkBitmap()?.let {
+            getCachedArtworkBitmap()?.let {
                 putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, it);
                 putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, it);
             }

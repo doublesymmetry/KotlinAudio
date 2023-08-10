@@ -148,7 +148,7 @@ class QueuedAudioPlayer(
      * @param indexes The indexes of the items to remove.
      */
     fun remove(indexes: List<Int>) {
-        var sorted = indexes.toList()
+        val sorted = indexes.toList()
         // Sort the indexes in descending order so we can safely remove them one by one
         // without having the next index possibly newly pointing to another item than intended:
         Collections.sort(sorted, Collections.reverseOrder());
@@ -182,7 +182,7 @@ class QueuedAudioPlayer(
      */
     fun move(fromIndex: Int, toIndex: Int) {
         exoPlayer.moveMediaItem(fromIndex, toIndex)
-        var item = queue[fromIndex]
+        val item = queue[fromIndex]
         queue.removeAt(fromIndex)
         queue.add(max(0, min(items.size, if (toIndex > fromIndex) toIndex else toIndex - 1)), item)
     }
@@ -218,7 +218,7 @@ class QueuedAudioPlayer(
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue[index] = mediaSource
         if (index == currentIndex) {
-            updateNotificationIfNecessary(ignoreMediaMetadata = true)
+            updateNotificationIfNecessary(overrideAudioItem = item)
         }
     }
 

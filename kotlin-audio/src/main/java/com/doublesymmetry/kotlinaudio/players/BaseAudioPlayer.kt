@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.os.ResultReceiver
 import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.MediaMetadataCompat
 import androidx.annotation.CallSuper
 import androidx.core.content.ContextCompat
 import androidx.media.AudioAttributesCompat
@@ -30,7 +29,6 @@ import com.doublesymmetry.kotlinaudio.models.CacheConfig
 import com.doublesymmetry.kotlinaudio.models.DefaultPlayerOptions
 import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
 import com.doublesymmetry.kotlinaudio.models.MediaType
-import com.doublesymmetry.kotlinaudio.models.NotificationMetadata
 import com.doublesymmetry.kotlinaudio.models.PlayWhenReadyChangeData
 import com.doublesymmetry.kotlinaudio.models.PlaybackError
 import com.doublesymmetry.kotlinaudio.models.PlaybackMetadata
@@ -55,7 +53,6 @@ import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.Player.Listener
-import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -321,10 +318,9 @@ abstract class BaseAudioPlayer internal constructor(
         }
     }
 
-    internal fun updateNotificationIfNecessary(ignoreMediaMetadata: Boolean = false) {
+    internal fun updateNotificationIfNecessary(overrideAudioItem: AudioItem? = null) {
         if (automaticallyUpdateNotificationMetadata) {
-            notificationManager.ignoreMediaMetadata = ignoreMediaMetadata
-            notificationManager.invalidate()
+            notificationManager.overrideAudioItem = overrideAudioItem
         }
     }
 

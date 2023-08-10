@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        Timber.plant(Timber.DebugTree())
         super.onCreate(savedInstanceState)
 
         player = QueuedAudioPlayer(
@@ -85,9 +86,10 @@ class MainActivity : ComponentActivity() {
                     onDismiss = { showSheet = false },
                     onRandomMetadata = {
                         val currentIndex = player.currentIndex
-                        val track = tracks[currentIndex]
-                        track.title = "Random Title - ${System.currentTimeMillis()}"
-                        track.artwork = "https://picsum.photos/200/300"
+                        val track = tracks[currentIndex].copy(
+                            title = "Random Title - ${System.currentTimeMillis()}",
+                            artwork = "https://random.imagecdn.app/800/800"
+                        )
                         player.replaceItem(currentIndex, track)
                     }
                 )
