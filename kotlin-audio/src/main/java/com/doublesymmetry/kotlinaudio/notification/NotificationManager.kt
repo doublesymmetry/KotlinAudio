@@ -18,7 +18,6 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import coil.imageLoader
-import coil.request.CachePolicy
 import coil.request.Disposable
 import coil.request.ImageRequest
 import com.doublesymmetry.kotlinaudio.R
@@ -79,8 +78,6 @@ class NotificationManager internal constructor(
                 context.imageLoader.enqueue(
                     ImageRequest.Builder(context)
                         .data(artwork)
-                        .memoryCachePolicy(CachePolicy.DISABLED)
-                        .diskCachePolicy(CachePolicy.WRITE_ONLY)
                         .target { result ->
                             val resultBitmap = (result as BitmapDrawable).bitmap
                             holder?.artworkBitmap = resultBitmap
@@ -119,8 +116,6 @@ class NotificationManager internal constructor(
                     notificationMetadataArtworkDisposable = context.imageLoader.enqueue(
                         ImageRequest.Builder(context)
                             .data(value.artwork)
-                            .memoryCachePolicy(CachePolicy.DISABLED)
-                            .diskCachePolicy(CachePolicy.WRITE_ONLY)
                             .target { result ->
                                 notificationMetadataBitmap = (result as BitmapDrawable).bitmap
                                 invalidate()

@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
                         val currentIndex = player.currentIndex
                         val track = tracks[currentIndex].copy(
                             title = "Random Title - ${System.currentTimeMillis()}",
-                            artwork = "https://random.imagecdn.app/800/800"
+                            artwork = "https://random.imagecdn.app/800/800?dummy=${System.currentTimeMillis()}",
                         )
                         player.replaceItem(currentIndex, track)
                     }

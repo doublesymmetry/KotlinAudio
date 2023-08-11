@@ -39,7 +39,7 @@ fun InnerSheet(onRandomMetadata: () -> Unit = {}) {
             .padding(16.dp)
             .fillMaxWidth()
     ) {
-        Text("Metadata: Update Title Randomly")
+        Text("Metadata: Update Randomly")
     }
 }
 
