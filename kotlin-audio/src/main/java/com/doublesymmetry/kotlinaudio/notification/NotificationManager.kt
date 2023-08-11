@@ -105,6 +105,9 @@ class NotificationManager internal constructor(
     /**
      * The item that should be used for the notification
      * This is used when the user manually sets the notification item
+     *
+     * _Note: If [BaseAudioPlayer.automaticallyUpdateNotificationMetadata] is true, this will
+     * get override on a track change_
      */
     internal var overrideAudioItem: AudioItem? = null
         set(value) {
@@ -341,6 +344,16 @@ class NotificationManager internal constructor(
             }
         )
         mediaSessionConnector.setMetadataDeduplicationEnabled(true)
+    }
+
+    /**
+     * Overrides the notification metadata with the given [AudioItem].
+     *
+     * _Note: If [BaseAudioPlayer.automaticallyUpdateNotificationMetadata] is true, this will
+     * get override on a track change._
+     */
+    public fun overrideMetadata(item: AudioItem) {
+        overrideAudioItem = item
     }
 
     public fun getMediaMetadataCompat(): MediaMetadataCompat {
