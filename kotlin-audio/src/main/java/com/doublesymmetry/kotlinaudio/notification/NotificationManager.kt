@@ -80,6 +80,7 @@ class NotificationManager internal constructor(
                 context.imageLoader.enqueue(
                     ImageRequest.Builder(context)
                         .data(artwork)
+                        .transformations(CropSquareTransformation())
                         .target { result ->
                             val resultBitmap = (result as BitmapDrawable).bitmap
                             holder?.artworkBitmap = resultBitmap
