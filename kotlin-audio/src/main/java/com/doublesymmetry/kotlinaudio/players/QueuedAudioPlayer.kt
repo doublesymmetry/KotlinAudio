@@ -2,6 +2,7 @@ package com.doublesymmetry.kotlinaudio.players
 
 import android.content.Context
 import com.doublesymmetry.kotlinaudio.models.*
+import com.doublesymmetry.kotlinaudio.players.components.getAudioItemHolder
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.IllegalSeekPositionException
 import com.google.android.exoplayer2.source.MediaSource
@@ -23,7 +24,7 @@ class QueuedAudioPlayer(
         get() = exoPlayer.currentMediaItemIndex
 
     override val currentItem: AudioItem?
-        get() = (queue.getOrNull(currentIndex)?.mediaItem?.localConfiguration?.tag as AudioItemHolder?)?.audioItem
+        get() = queue.getOrNull(currentIndex)?.mediaItem?.getAudioItemHolder()?.audioItem
 
     val nextIndex: Int?
         get() {
@@ -38,14 +39,14 @@ class QueuedAudioPlayer(
         }
 
     val items: List<AudioItem>
-        get() = queue.map { (it.mediaItem.localConfiguration?.tag as AudioItemHolder).audioItem }
+        get() = queue.map { it.mediaItem.getAudioItemHolder().audioItem }
 
     val previousItems: List<AudioItem>
         get() {
             return if (queue.isEmpty()) emptyList()
             else queue
                 .subList(0, exoPlayer.currentMediaItemIndex)
-                .map { (it.mediaItem.localConfiguration?.tag as AudioItemHolder).audioItem }
+                .map { it.mediaItem.getAudioItemHolder().audioItem }
         }
 
     val nextItems: List<AudioItem>
@@ -53,7 +54,7 @@ class QueuedAudioPlayer(
             return if (queue.isEmpty()) emptyList()
             else queue
                 .subList(exoPlayer.currentMediaItemIndex, queue.lastIndex)
-                .map { (it.mediaItem.localConfiguration?.tag as AudioItemHolder).audioItem }
+                .map { it.mediaItem.getAudioItemHolder().audioItem }
         }
 
     val nextItem: AudioItem?
@@ -148,7 +149,7 @@ class QueuedAudioPlayer(
      * @param indexes The indexes of the items to remove.
      */
     fun remove(indexes: List<Int>) {
-        var sorted = indexes.toList()
+        val sorted = indexes.toList()
         // Sort the indexes in descending order so we can safely remove them one by one
         // without having the next index possibly newly pointing to another item than intended:
         Collections.sort(sorted, Collections.reverseOrder());
@@ -182,7 +183,7 @@ class QueuedAudioPlayer(
      */
     fun move(fromIndex: Int, toIndex: Int) {
         exoPlayer.moveMediaItem(fromIndex, toIndex)
-        var item = queue[fromIndex]
+        val item = queue[fromIndex]
         queue.removeAt(fromIndex)
         queue.add(max(0, min(items.size, if (toIndex > fromIndex) toIndex else toIndex - 1)), item)
     }
@@ -218,7 +219,7 @@ class QueuedAudioPlayer(
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue[index] = mediaSource
         if (index == currentIndex) {
-            updateNotificationMetadataIfAutomatic()
+            updateNotificationIfNecessary(overrideAudioItem = item)
         }
     }
 
