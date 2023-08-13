@@ -28,6 +28,7 @@ import com.doublesymmetry.kotlinaudio.models.BufferConfig
 import com.doublesymmetry.kotlinaudio.models.CacheConfig
 import com.doublesymmetry.kotlinaudio.models.DefaultPlayerOptions
 import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
+import com.doublesymmetry.kotlinaudio.models.AAMediaSessionCallBack
 import com.doublesymmetry.kotlinaudio.models.MediaType
 import com.doublesymmetry.kotlinaudio.models.PlayWhenReadyChangeData
 import com.doublesymmetry.kotlinaudio.models.PlaybackError
@@ -78,11 +79,6 @@ import timber.log.Timber
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-interface AAMediaSessionCallBack {
-    fun handlePlayFromMediaId(mediaId: String?, extras: Bundle?)
-    fun handlePlayFromSearch(query: String?, extras: Bundle?)
-    fun handleSkipToQueueItem(id: Long)
-}
 
 abstract class BaseAudioPlayer internal constructor(
     internal val context: Context,

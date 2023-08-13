@@ -326,6 +326,8 @@ class NotificationManager internal constructor(
                 ): MediaDescriptionCompat {
                     val title = getTitle(windowIndex)
                     val artist = getArtist(windowIndex)
+                    val mediaItem = if (windowIndex == null) player.currentMediaItem else player.getMediaItemAt(windowIndex)
+                    val audioItemHolder = mediaItem?.getAudioItemHolder()
                     return MediaDescriptionCompat.Builder().apply {
                         setTitle(title)
                         setSubtitle(artist)
@@ -337,8 +339,9 @@ class NotificationManager internal constructor(
                                 putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
                             }
                         })
-                        setIconUri(mediaItem.mediaMetadata.artworkUri ?: Uri.parse(audioItemHolder.audioItem.artwork))
-                        setIconBitmap(audioItemHolder.artworkBitmap)
+                        setIconUri(mediaItem?.mediaMetadata?.artworkUri ?: Uri.parse(audioItemHolder?.audioItem?.artwork
+                            ?: ""))
+                        setIconBitmap(audioItemHolder?.artworkBitmap)
                     }.build()
                 }
             }
