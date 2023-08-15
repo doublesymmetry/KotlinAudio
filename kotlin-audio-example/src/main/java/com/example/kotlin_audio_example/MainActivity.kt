@@ -218,6 +218,11 @@ class MainActivity : ComponentActivity() {
                 artwork = "https://rntp.dev/example/smooth-jazz-24-7.jpeg",
                 artist = "New York, NY",
             ),
+            DefaultAudioItem(
+                "https://traffic.libsyn.com/atpfm/atp545.mp3",
+                title = "Chapters",
+                artwork = "https://random.imagecdn.app/800/800?dummy=1",
+            ),
         )
     }
 }
