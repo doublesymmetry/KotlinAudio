@@ -32,7 +32,6 @@ import com.doublesymmetry.kotlinaudio.models.AAMediaSessionCallBack
 import com.doublesymmetry.kotlinaudio.models.MediaType
 import com.doublesymmetry.kotlinaudio.models.PlayWhenReadyChangeData
 import com.doublesymmetry.kotlinaudio.models.PlaybackError
-import com.doublesymmetry.kotlinaudio.models.PlaybackMetadata
 import com.doublesymmetry.kotlinaudio.models.PlayerConfig
 import com.doublesymmetry.kotlinaudio.models.PlayerOptions
 import com.doublesymmetry.kotlinaudio.models.PositionChangedReason
@@ -51,6 +50,7 @@ import com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_MIN_BUFFER_MS
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.ForwardingPlayer
 import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.MediaMetadata
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.Player.Listener
@@ -667,7 +667,6 @@ abstract class BaseAudioPlayer internal constructor(
 
     companion object {
         const val APPLICATION_NAME = "react-native-track-player"
-        const val ANDROID_NOTIFICATION_UPDATE_THROTTLE_INTERVAL = 300L
     }
 
     inner class PlayerListener : Listener {
@@ -675,16 +674,12 @@ abstract class BaseAudioPlayer internal constructor(
          * Called when there is metadata associated with the current playback time.
          */
         override fun onMetadata(metadata: Metadata) {
-            PlaybackMetadata.fromId3Metadata(metadata)
-                ?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
-            PlaybackMetadata.fromIcy(metadata)
-                ?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
-            PlaybackMetadata.fromVorbisComment(metadata)
-                ?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
-            PlaybackMetadata.fromQuickTime(metadata)
-                ?.let { playerEventHolder.updateOnPlaybackMetadata(it) }
+            playerEventHolder.updateOnTimedMetadata(metadata)
         }
 
+        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+            playerEventHolder.updateOnCommonMetadata(mediaMetadata)
+        }
 
         /**
          * A position discontinuity occurs when the playing period changes, the playback position

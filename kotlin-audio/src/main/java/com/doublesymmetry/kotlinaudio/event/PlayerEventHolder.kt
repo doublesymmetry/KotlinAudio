@@ -1,6 +1,8 @@
 package com.doublesymmetry.kotlinaudio.event
 
 import com.doublesymmetry.kotlinaudio.models.*
+import com.google.android.exoplayer2.MediaMetadata
+import com.google.android.exoplayer2.metadata.Metadata
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,8 +44,11 @@ class PlayerEventHolder {
     private var _onAudioFocusChanged = MutableSharedFlow<FocusChangeData>(1)
     var onAudioFocusChanged = _onAudioFocusChanged.asSharedFlow()
 
-    private var _onPlaybackMetadata = MutableSharedFlow<PlaybackMetadata>(1)
-    var onPlaybackMetadata = _onPlaybackMetadata.asSharedFlow()
+    private var _onCommonMetadata = MutableSharedFlow<MediaMetadata>(1)
+    var onCommonMetadata = _onCommonMetadata.asSharedFlow()
+
+    private var _onTimedMetadata = MutableSharedFlow<Metadata>(1)
+    var onTimedMetadata = _onTimedMetadata.asSharedFlow()
 
     private var _onPlayerActionTriggeredExternally = MutableSharedFlow<MediaSessionCallback>()
 
@@ -92,9 +97,15 @@ class PlayerEventHolder {
         }
     }
 
-    internal fun updateOnPlaybackMetadata(metadata: PlaybackMetadata) {
+    internal fun updateOnCommonMetadata(metadata: MediaMetadata) {
         coroutineScope.launch {
-            _onPlaybackMetadata.emit(metadata)
+            _onCommonMetadata.emit(metadata)
+        }
+    }
+
+    internal fun updateOnTimedMetadata(metadata: Metadata) {
+        coroutineScope.launch {
+            _onTimedMetadata.emit(metadata)
         }
     }
 
