@@ -12,6 +12,5 @@ sealed class MediaSessionCallback {
     object FORWARD : MediaSessionCallback()
     object REWIND : MediaSessionCallback()
     object STOP : MediaSessionCallback()
-    object PREPARE : MediaSessionCallback()
     class SEEK(val positionMs: Long): MediaSessionCallback()
 }

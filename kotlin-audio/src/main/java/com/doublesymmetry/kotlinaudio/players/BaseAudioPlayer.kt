@@ -282,10 +282,6 @@ abstract class BaseAudioPlayer internal constructor(
                 playerToUse.seekTo(pos)
             }
 
-            override fun onPrepare() {
-                playerToUse.prepare()
-            }
-
             override fun onSetRating(rating: RatingCompat?) {
                 if (rating == null) return
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(
@@ -375,10 +371,6 @@ abstract class BaseAudioPlayer internal constructor(
 
             override fun stop() {
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.STOP)
-            }
-
-            override fun prepare() {
-                playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PREPARE)
             }
 
             override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
@@ -814,11 +806,6 @@ abstract class BaseAudioPlayer internal constructor(
                     Player.EVENT_IS_PLAYING_CHANGED -> {
                         if (player.isPlaying) {
                             playerState = AudioPlayerState.PLAYING
-                        }
-                    }
-                    Player.EVENT_AUDIO_SESSION_ID -> {
-                        if (player is ExoPlayer) {
-                            playerEventHolder.updateAudioSessionId(player.getAudioSessionId())
                         }
                     }
                 }

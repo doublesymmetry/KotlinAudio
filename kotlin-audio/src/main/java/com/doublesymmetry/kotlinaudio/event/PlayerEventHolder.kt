@@ -16,9 +16,6 @@ class PlayerEventHolder {
     private var _stateChange = MutableSharedFlow<AudioPlayerState>(1)
     var stateChange = _stateChange.asSharedFlow()
 
-    private var _audioSessionId = MutableStateFlow<Int?>(null)
-    var audioSessionId = _audioSessionId.asStateFlow()
-
     private var _playbackEnd = MutableSharedFlow<PlaybackEndedReason?>(1)
     var playbackEnd = _playbackEnd.asSharedFlow()
 
@@ -121,12 +118,6 @@ class PlayerEventHolder {
     internal fun updateOnPlayerActionTriggeredExternally(callback: MediaSessionCallback) {
         coroutineScope.launch {
             _onPlayerActionTriggeredExternally.emit(callback)
-        }
-    }
-
-    internal fun updateAudioSessionId(audioSessionId: Int?) {
-        coroutineScope.launch {
-            _audioSessionId.emit(audioSessionId)
         }
     }
 }
