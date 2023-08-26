@@ -775,9 +775,9 @@ class NotificationManager internal constructor(
         // controls in Android 13, custom actions are implemented to support them
         // https://developer.android.com/about/versions/13/behavior-changes-13#playback-controls
         private val needsCustomActionsToAddMissingButtons = Build.VERSION.SDK_INT >= 33
-        private const val REWIND = "rewind"
-        private const val FORWARD = "forward"
-        private const val STOP = "stop"
+        public const val REWIND = "rewind"
+        public const val FORWARD = "forward"
+        public const val STOP = "stop"
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "kotlin_audio_player"
         private val DEFAULT_STOP_ICON =
