@@ -300,6 +300,14 @@ abstract class BaseAudioPlayer internal constructor(
                     )
                 )
             }
+            // see NotificationManager.kt. onRewind, onFastForward and onStop do not trigger.
+            override fun onCustomAction(action: String?, extras: Bundle?) {
+                when (action) {
+                    NotificationManager.REWIND -> playerToUse.seekBack()
+                    NotificationManager.FORWARD -> playerToUse.seekForward()
+                    NotificationManager.STOP-> playerToUse.stop()
+                }
+            }
         })
 
 
@@ -338,7 +346,7 @@ abstract class BaseAudioPlayer internal constructor(
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
     }
-    
+
     public fun getMediaSessionToken(): MediaSessionCompat.Token {
         return mediaSession.sessionToken
     }
