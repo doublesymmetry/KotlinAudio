@@ -73,6 +73,7 @@ import com.google.android.exoplayer2.upstream.cache.CacheDataSource
 import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Locale
@@ -93,10 +94,16 @@ abstract class BaseAudioPlayer internal constructor(
 
     private var currentPlayer = 0
     protected val exoPlayer2: ExoPlayer
+    val playerListener = PlayerListener()
 
-    private fun currentPlayer(): ExoPlayer {
-        if(currentPlayer == 0) return exoPlayer;
-        else return exoPlayer2;
+    fun currentPlayer(): ExoPlayer {
+        return if(currentPlayer == 0) exoPlayer;
+        else exoPlayer2;
+    }
+
+    private fun otherPlayer(): ExoPlayer {
+        return if(currentPlayer == 1) exoPlayer;
+        else exoPlayer2;
     }
 
     var notificationManager: NotificationManager
@@ -254,7 +261,7 @@ abstract class BaseAudioPlayer internal constructor(
             playerEventHolder
         )
 
-        currentPlayer().addListener(PlayerListener())
+        currentPlayer().addListener(playerListener)
 
         scope.launch {
             // Whether ExoPlayer should manage audio focus for us automatically
@@ -286,6 +293,19 @@ abstract class BaseAudioPlayer internal constructor(
         if (currentPlayer > 1) {
             currentPlayer = 0;
         }
+        scope.launch {
+            val fadeOutPlayer = otherPlayer();
+            fadeOutPlayer.removeListener(playerListener)
+            val volume = fadeOutPlayer.volume;
+            var fadeOutDuration = 500L;
+            val fadeOutInterval = 20L;
+            while (fadeOutDuration > 0) {
+                fadeOutDuration -= fadeOutInterval;
+                fadeOutPlayer.volume -= volume * fadeOutInterval / fadeOutDuration;
+                delay(fadeOutInterval);
+            }
+            fadeOutPlayer.pause()
+        }
         val playerToUse =
             if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else currentPlayer()
 
@@ -298,7 +318,7 @@ abstract class BaseAudioPlayer internal constructor(
             playerEventHolder
         )
 
-        currentPlayer().addListener(PlayerListener())
+        currentPlayer().addListener(playerListener)
 
         scope.launch {
             // Whether ExoPlayer should manage audio focus for us automatically
@@ -464,7 +484,8 @@ abstract class BaseAudioPlayer internal constructor(
 
     @CallSuper
     open fun clear() {
-        currentPlayer().clearMediaItems()
+        exoPlayer.clearMediaItems()
+        exoPlayer2.clearMediaItems()
     }
 
     /**

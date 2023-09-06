@@ -20,21 +20,21 @@ class QueuedAudioPlayer(
     override val playerOptions = DefaultQueuedPlayerOptions(exoPlayer)
 
     val currentIndex
-        get() = exoPlayer.currentMediaItemIndex
+        get() = currentPlayer().currentMediaItemIndex
 
     override val currentItem: AudioItem?
         get() = queue.getOrNull(currentIndex)?.mediaItem?.getAudioItemHolder()?.audioItem
 
     val nextIndex: Int?
         get() {
-            return if (exoPlayer.nextMediaItemIndex == C.INDEX_UNSET) null
-            else exoPlayer.nextMediaItemIndex
+            return if (currentPlayer().nextMediaItemIndex == C.INDEX_UNSET) null
+            else currentPlayer().nextMediaItemIndex
         }
 
     val previousIndex: Int?
         get() {
-            return if (exoPlayer.previousMediaItemIndex == C.INDEX_UNSET) null
-            else exoPlayer.previousMediaItemIndex
+            return if (currentPlayer().previousMediaItemIndex == C.INDEX_UNSET) null
+            else currentPlayer().previousMediaItemIndex
         }
 
     val items: List<AudioItem>
@@ -44,7 +44,7 @@ class QueuedAudioPlayer(
         get() {
             return if (queue.isEmpty()) emptyList()
             else queue
-                .subList(0, exoPlayer.currentMediaItemIndex)
+                .subList(0, currentPlayer().currentMediaItemIndex)
                 .map { it.mediaItem.getAudioItemHolder().audioItem }
         }
 
@@ -52,7 +52,7 @@ class QueuedAudioPlayer(
         get() {
             return if (queue.isEmpty()) emptyList()
             else queue
-                .subList(exoPlayer.currentMediaItemIndex, queue.lastIndex)
+                .subList(currentPlayer().currentMediaItemIndex, queue.lastIndex)
                 .map { it.mediaItem.getAudioItemHolder().audioItem }
         }
 
@@ -63,7 +63,7 @@ class QueuedAudioPlayer(
         get() = items.getOrNull(currentIndex - 1)
 
     override fun load(item: AudioItem, playWhenReady: Boolean) {
-        exoPlayer.playWhenReady = playWhenReady
+        currentPlayer().playWhenReady = playWhenReady
         load(item)
     }
 
@@ -76,6 +76,9 @@ class QueuedAudioPlayer(
             exoPlayer.addMediaSource(currentIndex + 1, mediaSource)
             exoPlayer.removeMediaItem(currentIndex)
             exoPlayer.prepare()
+            exoPlayer2.addMediaSource(currentIndex + 1, mediaSource)
+            exoPlayer2.removeMediaItem(currentIndex)
+            exoPlayer2.prepare()
         }
     }
 
@@ -84,7 +87,7 @@ class QueuedAudioPlayer(
      * @param item The [AudioItem] to add.
      */
     fun add(item: AudioItem, playWhenReady: Boolean) {
-        exoPlayer.playWhenReady = playWhenReady
+        currentPlayer().playWhenReady = playWhenReady
         add(item)
     }
 
@@ -98,6 +101,8 @@ class QueuedAudioPlayer(
         queue.add(mediaSource)
         exoPlayer.addMediaSource(mediaSource)
         exoPlayer.prepare()
+        exoPlayer2.addMediaSource(mediaSource)
+        exoPlayer2.prepare()
     }
 
     /**
@@ -106,7 +111,7 @@ class QueuedAudioPlayer(
      * @param playWhenReady Whether playback starts automatically.
      */
     fun add(items: List<AudioItem>, playWhenReady: Boolean) {
-        exoPlayer.playWhenReady = playWhenReady
+        currentPlayer().playWhenReady = playWhenReady
         add(items)
     }
 
@@ -119,6 +124,8 @@ class QueuedAudioPlayer(
         queue.addAll(mediaSources)
         exoPlayer.addMediaSources(mediaSources)
         exoPlayer.prepare()
+        exoPlayer2.addMediaSources(mediaSources)
+        exoPlayer2.prepare()
     }
 
 
@@ -132,6 +139,8 @@ class QueuedAudioPlayer(
         queue.addAll(atIndex, mediaSources)
         exoPlayer.addMediaSources(atIndex, mediaSources)
         exoPlayer.prepare()
+        exoPlayer2.addMediaSources(atIndex, mediaSources)
+        exoPlayer2.prepare()
     }
 
     /**
@@ -141,6 +150,7 @@ class QueuedAudioPlayer(
     fun remove(index: Int) {
         queue.removeAt(index)
         exoPlayer.removeMediaItem(index)
+        exoPlayer2.removeMediaItem(index)
     }
 
     /**
@@ -162,8 +172,8 @@ class QueuedAudioPlayer(
      * Does nothing if there is no next item to skip to.
      */
     fun next() {
-        exoPlayer.seekToNextMediaItem()
-        exoPlayer.prepare()
+        currentPlayer().seekToNextMediaItem()
+        currentPlayer().prepare()
     }
 
     /**
@@ -171,8 +181,8 @@ class QueuedAudioPlayer(
      * Does nothing if there is no previous item to skip to.
      */
     fun previous() {
-        exoPlayer.seekToPreviousMediaItem()
-        exoPlayer.prepare()
+        currentPlayer().seekToPreviousMediaItem()
+        currentPlayer().prepare()
     }
 
     /**
@@ -182,6 +192,7 @@ class QueuedAudioPlayer(
      */
     fun move(fromIndex: Int, toIndex: Int) {
         exoPlayer.moveMediaItem(fromIndex, toIndex)
+        exoPlayer2.moveMediaItem(fromIndex, toIndex)
         val item = queue[fromIndex]
         queue.removeAt(fromIndex)
         queue.add(max(0, min(items.size, if (toIndex > fromIndex) toIndex else toIndex - 1)), item)
@@ -193,7 +204,7 @@ class QueuedAudioPlayer(
      * @param playWhenReady Whether playback starts automatically.
      */
     fun jumpToItem(index: Int, playWhenReady: Boolean) {
-        exoPlayer.playWhenReady = playWhenReady
+        currentPlayer().playWhenReady = playWhenReady
         jumpToItem(index)
     }
 
@@ -203,8 +214,8 @@ class QueuedAudioPlayer(
      */
     fun jumpToItem(index: Int) {
         try {
-            exoPlayer.seekTo(index, C.TIME_UNSET)
-            exoPlayer.prepare()
+            currentPlayer().seekTo(index, C.TIME_UNSET)
+            currentPlayer().prepare()
         } catch (e: IllegalSeekPositionException) {
             throw Error("This item index $index does not exist. The size of the queue is ${queue.size} items.")
         }
@@ -231,6 +242,7 @@ class QueuedAudioPlayer(
         val fromIndex = currentIndex + 1
 
         exoPlayer.removeMediaItems(fromIndex, lastIndex)
+        exoPlayer2.removeMediaItems(fromIndex, lastIndex)
         queue.subList(fromIndex, lastIndex).clear()
     }
 
@@ -239,6 +251,7 @@ class QueuedAudioPlayer(
      */
     fun removePreviousItems() {
         exoPlayer.removeMediaItems(0, currentIndex)
+        exoPlayer2.removeMediaItems(0, currentIndex)
         queue.subList(0, currentIndex).clear()
     }
 
