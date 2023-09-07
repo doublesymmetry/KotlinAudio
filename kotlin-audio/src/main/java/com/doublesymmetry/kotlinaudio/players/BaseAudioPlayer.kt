@@ -297,17 +297,19 @@ abstract class BaseAudioPlayer internal constructor(
             val fadeOutPlayer = otherPlayer();
             fadeOutPlayer.removeListener(playerListener)
             val volume = fadeOutPlayer.volume;
-            var fadeOutDuration = 500L;
-            val fadeOutInterval = 20L;
+            var fadeOutDuration = 2500L
+            val fadeOutInterval = 20L
             while (fadeOutDuration > 0) {
-                fadeOutDuration -= fadeOutInterval;
-                fadeOutPlayer.volume -= volume * fadeOutInterval / fadeOutDuration;
-                delay(fadeOutInterval);
+                fadeOutDuration -= fadeOutInterval
+                fadeOutPlayer.volume -= volume * fadeOutInterval / fadeOutDuration
+                delay(fadeOutInterval)
             }
+            fadeOutPlayer.seekToNextMediaItem()
             fadeOutPlayer.pause()
         }
+        val playerObject = currentPlayer()
         val playerToUse =
-            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else currentPlayer()
+            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else playerObject
 
         notificationManager = NotificationManager(
             context,
@@ -318,7 +320,7 @@ abstract class BaseAudioPlayer internal constructor(
             playerEventHolder
         )
 
-        currentPlayer().addListener(playerListener)
+        playerObject.addListener(playerListener)
 
         scope.launch {
             // Whether ExoPlayer should manage audio focus for us automatically
@@ -335,11 +337,14 @@ abstract class BaseAudioPlayer internal constructor(
                     }
                 )
                 .build();
-            currentPlayer().setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
+            playerObject.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
             mediaSessionConnector.setPlayer(playerToUse)
             mediaSessionConnector.setMediaMetadataProvider {
                 notificationManager.getMediaMetadataCompat()
             }
+            playerObject.playWhenReady = true
+            playerObject.seekToNextMediaItem()
+            playerObject.prepare()
         }
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)

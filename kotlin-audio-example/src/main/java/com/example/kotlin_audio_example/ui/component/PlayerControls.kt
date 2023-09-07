@@ -12,6 +12,7 @@ import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.PauseCircle
 import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ fun PlayerControls(
     onNext: () -> Unit = {},
     isPaused: Boolean,
     onPlayPause: () -> Unit = {},
+    onSwitchExoPlayer: () -> Unit = {},
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -79,6 +81,26 @@ fun PlayerControls(
             Icon(
                 Icons.Rounded.FastForward,
                 contentDescription = "Next",
+                modifier = Modifier
+                    .height(48.dp)
+                    .width(48.dp)
+            )
+        }
+    }
+    Row (
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = modifier
+    ) {
+        IconButton(
+            onClick = onSwitchExoPlayer,
+            modifier = Modifier
+                .height(48.dp)
+                .width(48.dp)
+        ) {
+            Icon(
+                Icons.Rounded.Refresh,
+                contentDescription = "changeExoPlayer",
                 modifier = Modifier
                     .height(48.dp)
                     .width(48.dp)
