@@ -75,10 +75,9 @@ class QueuedAudioPlayer(
             queue[currentIndex] = mediaSource
             exoPlayer.addMediaSource(currentIndex + 1, mediaSource)
             exoPlayer.removeMediaItem(currentIndex)
-            exoPlayer.prepare()
             exoPlayer2.addMediaSource(currentIndex + 1, mediaSource)
             exoPlayer2.removeMediaItem(currentIndex)
-            exoPlayer2.prepare()
+            currentPlayer().prepare()
         }
     }
 
@@ -100,9 +99,8 @@ class QueuedAudioPlayer(
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue.add(mediaSource)
         exoPlayer.addMediaSource(mediaSource)
-        exoPlayer.prepare()
         exoPlayer2.addMediaSource(mediaSource)
-        exoPlayer2.prepare()
+        currentPlayer().prepare()
     }
 
     /**
@@ -123,9 +121,8 @@ class QueuedAudioPlayer(
         val mediaSources = items.map { getMediaSourceFromAudioItem(it) }
         queue.addAll(mediaSources)
         exoPlayer.addMediaSources(mediaSources)
-        exoPlayer.prepare()
         exoPlayer2.addMediaSources(mediaSources)
-        exoPlayer2.prepare()
+        currentPlayer().prepare()
     }
 
 
@@ -138,9 +135,8 @@ class QueuedAudioPlayer(
         val mediaSources = items.map { getMediaSourceFromAudioItem(it) }
         queue.addAll(atIndex, mediaSources)
         exoPlayer.addMediaSources(atIndex, mediaSources)
-        exoPlayer.prepare()
         exoPlayer2.addMediaSources(atIndex, mediaSources)
-        exoPlayer2.prepare()
+        currentPlayer().prepare()
     }
 
     /**
@@ -172,7 +168,8 @@ class QueuedAudioPlayer(
      * Does nothing if there is no next item to skip to.
      */
     fun next() {
-        currentPlayer().seekToNextMediaItem()
+        exoPlayer.seekToNextMediaItem()
+        exoPlayer2.seekToNextMediaItem()
         currentPlayer().prepare()
     }
 
@@ -181,7 +178,8 @@ class QueuedAudioPlayer(
      * Does nothing if there is no previous item to skip to.
      */
     fun previous() {
-        currentPlayer().seekToPreviousMediaItem()
+        exoplayer.seekToPreviousMediaItem()
+        exoplayer2.seekToPreviousMediaItem()
         currentPlayer().prepare()
     }
 
@@ -214,7 +212,8 @@ class QueuedAudioPlayer(
      */
     fun jumpToItem(index: Int) {
         try {
-            currentPlayer().seekTo(index, C.TIME_UNSET)
+            exoplayer.seekTo(index, C.TIME_UNSET)
+            exoPlayer2.seekTo(index, C.TIME_UNSET)
             currentPlayer().prepare()
         } catch (e: IllegalSeekPositionException) {
             throw Error("This item index $index does not exist. The size of the queue is ${queue.size} items.")
