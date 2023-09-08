@@ -151,25 +151,9 @@ abstract class BaseAudioPlayer internal constructor(
         }
 
     /**
-     * fade out the current exoPlayer by a simple linear function.
+     * fade volume of the current exoPlayer by a simple linear function.
      */
-    fun fadeOut(duration: Long = 500, interval: Long = 20L, callback: () -> Unit = { }) {
-        scope.launch {
-            val volume = exoPlayer.volume
-            var fadeOutDuration = duration
-            while (fadeOutDuration > 0) {
-                fadeOutDuration -= interval
-                exoPlayer.volume -= volume * interval / fadeOutDuration
-                delay(interval)
-            }
-            callback()
-        }
-    }
-
-    /**
-     * fade in the current exoPlayer by a simple linear function.
-     */
-    fun fadeIn(volume: Float = 1f, duration: Long = 500, interval: Long = 20L, callback: () -> Unit = { }) {
+    fun fadeVolume(volume: Float = 1f, duration: Long = 500, interval: Long = 20L, callback: () -> Unit = { }) {
         scope.launch {
             val volumeDiff = volume - exoPlayer.volume
             var fadeInDuration = duration
@@ -178,6 +162,7 @@ abstract class BaseAudioPlayer internal constructor(
                 exoPlayer.volume += volumeDiff * interval / fadeInDuration
                 delay(interval)
             }
+            exoPlayer.volume = volume
             callback()
         }
     }
@@ -186,10 +171,10 @@ abstract class BaseAudioPlayer internal constructor(
      * a simple fade in/out wrapper. for KA-example only, do not use.
      */
     fun simpleFadeDemo(callback: () -> Unit = { }) {
-        fadeOut {
+        fadeVolume(0f, callback={
             callback()
-            fadeIn()
-        }
+            fadeVolume()
+        })
     }
 
     var playbackSpeed: Float
