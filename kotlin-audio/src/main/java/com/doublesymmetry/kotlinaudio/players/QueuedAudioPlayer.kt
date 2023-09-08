@@ -178,8 +178,8 @@ class QueuedAudioPlayer(
      * Does nothing if there is no previous item to skip to.
      */
     fun previous() {
-        exoplayer.seekToPreviousMediaItem()
-        exoplayer2.seekToPreviousMediaItem()
+        exoPlayer.seekToPreviousMediaItem()
+        exoPlayer2.seekToPreviousMediaItem()
         currentPlayer().prepare()
     }
 
@@ -212,7 +212,7 @@ class QueuedAudioPlayer(
      */
     fun jumpToItem(index: Int) {
         try {
-            exoplayer.seekTo(index, C.TIME_UNSET)
+            exoPlayer.seekTo(index, C.TIME_UNSET)
             exoPlayer2.seekTo(index, C.TIME_UNSET)
             currentPlayer().prepare()
         } catch (e: IllegalSeekPositionException) {

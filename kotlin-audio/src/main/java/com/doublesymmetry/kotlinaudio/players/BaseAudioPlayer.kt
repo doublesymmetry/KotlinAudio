@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.os.ResultReceiver
 import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.util.Log
 import androidx.annotation.CallSuper
 import androidx.core.content.ContextCompat
 import androidx.media.AudioAttributesCompat
@@ -78,6 +79,7 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.log
 
 abstract class BaseAudioPlayer internal constructor(
     internal val context: Context,
@@ -297,7 +299,7 @@ abstract class BaseAudioPlayer internal constructor(
             val fadeOutPlayer = otherPlayer();
             fadeOutPlayer.removeListener(playerListener)
             val volume = fadeOutPlayer.volume;
-            var fadeOutDuration = 2500L
+            var fadeOutDuration = 1500L
             val fadeOutInterval = 20L
             while (fadeOutDuration > 0) {
                 fadeOutDuration -= fadeOutInterval
@@ -337,7 +339,7 @@ abstract class BaseAudioPlayer internal constructor(
                     }
                 )
                 .build();
-            playerObject.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
+            playerObject.setAudioAttributes(audioAttributes, false);
             mediaSessionConnector.setPlayer(playerToUse)
             mediaSessionConnector.setMediaMetadataProvider {
                 notificationManager.getMediaMetadataCompat()
@@ -345,6 +347,7 @@ abstract class BaseAudioPlayer internal constructor(
             playerObject.playWhenReady = true
             playerObject.seekToNextMediaItem()
             playerObject.prepare()
+            playerObject.volume = 1f
         }
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
