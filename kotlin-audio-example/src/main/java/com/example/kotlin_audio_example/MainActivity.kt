@@ -109,10 +109,10 @@ class MainActivity : ComponentActivity() {
                     onTopBarAction = { showSheet = true },
                     onPlayPause = {
                         if (player.playerState == AudioPlayerState.PLAYING) {
-                            player.fadeOut { player.pause() }
+                            player.fadeVolume(0f, callback = { player.pause() })
                         } else {
                             player.play()
-                            player.fadeIn {  }
+                            player.fadeVolume()
                         }
                     },
                     onSeek = { player.seek(it, TimeUnit.MILLISECONDS) }
