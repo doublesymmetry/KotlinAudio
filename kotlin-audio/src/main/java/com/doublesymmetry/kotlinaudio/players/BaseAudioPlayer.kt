@@ -155,11 +155,11 @@ abstract class BaseAudioPlayer internal constructor(
      */
     fun fadeVolume(volume: Float = 1f, duration: Long = 500, interval: Long = 20L, callback: () -> Unit = { }) {
         scope.launch {
-            val volumeDiff = volume - exoPlayer.volume
+            val volumeDiff = (volume - exoPlayer.volume) * interval / duration
             var fadeInDuration = duration
             while (fadeInDuration > 0) {
                 fadeInDuration -= interval
-                exoPlayer.volume += volumeDiff * interval / fadeInDuration
+                exoPlayer.volume += volumeDiff
                 delay(interval)
             }
             exoPlayer.volume = volume
