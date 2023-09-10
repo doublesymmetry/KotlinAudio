@@ -290,7 +290,24 @@ abstract class BaseAudioPlayer internal constructor(
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
     }
 
-    fun switchExoplayer() {
+    fun playNext(exoplayer: ExoPlayer) {
+        exoplayer.seekToNextMediaItem()
+    }
+
+    fun playPrevious(exoplayer: ExoPlayer) {
+        exoplayer.seekToPreviousMediaItem()
+    }
+
+    fun playAtIndex(index: Int, exoplayer: ExoPlayer) {
+        exoplayer.seekTo(index, C.TIME_UNSET)
+    }
+
+    fun switchExoplayer(
+        playerOperation: (exoplayer: ExoPlayer) -> Unit = ::playNext,
+        fadeDuration: Long = 1500,
+        fadeInterval: Long = 20,
+        fadeToVolume: Float = 1f
+    ){
         currentPlayer += 1;
         if (currentPlayer > 1) {
             currentPlayer = 0;
@@ -298,15 +315,16 @@ abstract class BaseAudioPlayer internal constructor(
         scope.launch {
             val fadeOutPlayer = otherPlayer();
             fadeOutPlayer.removeListener(playerListener)
-            val volume = fadeOutPlayer.volume;
-            var fadeOutDuration = 1500L
-            val fadeOutInterval = 20L
+            var fadeOutDuration = fadeDuration
+            val volumeDiff = -fadeOutPlayer.volume * fadeInterval / fadeOutDuration;
             while (fadeOutDuration > 0) {
-                fadeOutDuration -= fadeOutInterval
-                fadeOutPlayer.volume -= volume * fadeOutInterval / fadeOutDuration
-                delay(fadeOutInterval)
+                fadeOutDuration -= fadeInterval
+                fadeOutPlayer.volume += volumeDiff
+                delay(fadeInterval)
             }
-            fadeOutPlayer.seekToNextMediaItem()
+            fadeOutPlayer.volume = 0f
+            fadeOutPlayer.playWhenReady = false
+            playerOperation(fadeOutPlayer)
             fadeOutPlayer.pause()
         }
         val playerObject = currentPlayer()
@@ -347,7 +365,14 @@ abstract class BaseAudioPlayer internal constructor(
             playerObject.playWhenReady = true
             playerObject.seekToNextMediaItem()
             playerObject.prepare()
-            playerObject.volume = 1f
+            playerObject.volume = 0f
+            var fadeInDuration = fadeDuration
+            val volumeDiff = fadeToVolume * fadeInterval / fadeInDuration;
+            while (fadeInDuration > 0) {
+                fadeInDuration -= fadeInterval
+                playerObject.volume += volumeDiff
+                delay(fadeInterval)
+            }
         }
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)

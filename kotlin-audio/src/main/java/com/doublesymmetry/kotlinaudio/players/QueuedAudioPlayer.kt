@@ -75,7 +75,7 @@ class QueuedAudioPlayer(
             queue[currentIndex] = mediaSource
             exoPlayer.addMediaSource(currentIndex + 1, mediaSource)
             exoPlayer.removeMediaItem(currentIndex)
-            exoPlayer2.addMediaSource(currentIndex + 1, mediaSource)
+            exoPlayer2.addMediaSource(currentIndex + 1, getMediaSourceFromAudioItem(item))
             exoPlayer2.removeMediaItem(currentIndex)
             currentPlayer().prepare()
         }
@@ -99,7 +99,7 @@ class QueuedAudioPlayer(
         val mediaSource = getMediaSourceFromAudioItem(item)
         queue.add(mediaSource)
         exoPlayer.addMediaSource(mediaSource)
-        exoPlayer2.addMediaSource(mediaSource)
+        exoPlayer2.addMediaSource(getMediaSourceFromAudioItem(item))
         currentPlayer().prepare()
     }
 
@@ -121,7 +121,7 @@ class QueuedAudioPlayer(
         val mediaSources = items.map { getMediaSourceFromAudioItem(it) }
         queue.addAll(mediaSources)
         exoPlayer.addMediaSources(mediaSources)
-        exoPlayer2.addMediaSources(mediaSources)
+        exoPlayer2.addMediaSources(items.map { getMediaSourceFromAudioItem(it) })
         currentPlayer().prepare()
     }
 
