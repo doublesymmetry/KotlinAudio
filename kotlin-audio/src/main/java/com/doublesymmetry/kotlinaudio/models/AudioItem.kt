@@ -52,7 +52,7 @@ data class DefaultAudioItem(
     override var artist: String? = null,
     override var title: String? = null,
     override var albumTitle: String? = null,
-    override val artwork: String? = null,
+    override var artwork: String? = null,
     override val duration: Long = -1,
     override val options: AudioItemOptions? = null,
 ) : AudioItem
