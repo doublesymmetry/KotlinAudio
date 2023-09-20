@@ -37,7 +37,7 @@ android {
 }
 
 dependencies {
-    implementation 'io.coil-kt:coil:1.4.0'
+    implementation 'io.coil-kt:coil:2.2.0'
     implementation 'androidx.media:media:1.6.0'
     api 'com.google.android.exoplayer:exoplayer:2.19.0'
     api 'com.google.android.exoplayer:extension-mediasession:2.19.0'
