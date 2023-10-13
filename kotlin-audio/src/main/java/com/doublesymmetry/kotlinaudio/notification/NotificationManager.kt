@@ -199,9 +199,9 @@ class NotificationManager internal constructor(
             else player.getMediaItemAt(index)
 
         return if (player.isCurrentMediaItemDynamic || player.duration == C.TIME_UNSET) {
-            mediaItem?.getAudioItemHolder()?.audioItem?.duration ?: -1
+            overrideAudioItem?.duration ?: mediaItem?.getAudioItemHolder()?.audioItem?.duration ?: -1
         } else {
-            player.duration
+            overrideAudioItem?.duration ?: player.duration
         }
     }
 
