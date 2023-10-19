@@ -63,8 +63,8 @@ class QueuedAudioPlayer(
         get() = items.getOrNull(currentIndex - 1)
 
     override fun load(item: AudioItem, playWhenReady: Boolean) {
-        exoPlayer.playWhenReady = playWhenReady
         load(item)
+        exoPlayer.playWhenReady = playWhenReady
     }
 
     override fun load(item: AudioItem) {
@@ -75,6 +75,7 @@ class QueuedAudioPlayer(
             queue[currentIndex] = mediaSource
             exoPlayer.addMediaSource(currentIndex + 1, mediaSource)
             exoPlayer.removeMediaItem(currentIndex)
+            exoPlayer.seekTo(currentIndex, C.TIME_UNSET);
             exoPlayer.prepare()
         }
     }
