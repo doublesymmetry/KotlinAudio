@@ -61,7 +61,8 @@ class MainActivity : ComponentActivity() {
             this, playerConfig = PlayerConfig(
                 interceptPlayerActionsTriggeredExternally = true,
                 handleAudioBecomingNoisy = true,
-                handleAudioFocus = true
+                handleAudioFocus = true,
+                // squareCropAlbumArt = true,
             )
         )
         player.add(tracks)
@@ -173,6 +174,14 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         val tracks = listOf(
+        DefaultAudioItem(
+                "https://rntp.dev/example/Longing.mp3",
+            MediaType.DEFAULT,
+            title = "Longing (wide album art)",
+            artwork = "https://i.ytimg.com/vi/qod7eBE0mTk/maxresdefault.jpg",
+            artist = "David Chavez",
+            duration = 143 * 1000,
+        ),
             DefaultAudioItem(
                 "https://rntp.dev/example/Longing.mp3",
                 MediaType.DEFAULT,

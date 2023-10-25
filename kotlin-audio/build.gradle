@@ -64,6 +64,9 @@ dependencies {
     // The instrumentation test companion libraries
     androidTestImplementation("de.mannodermaus.junit5:android-test-core:1.3.0")
     androidTestRuntimeOnly("de.mannodermaus.junit5:android-test-runner:1.3.0")
+
+    // album art transformation
+    implementation 'jp.wasabeef.transformers:coil:1.0.6'
 }
 
 afterEvaluate {

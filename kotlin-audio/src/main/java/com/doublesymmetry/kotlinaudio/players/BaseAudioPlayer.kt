@@ -236,7 +236,8 @@ abstract class BaseAudioPlayer internal constructor(
             mediaSession,
             mediaSessionConnector,
             notificationEventHolder,
-            playerEventHolder
+            playerEventHolder,
+            playerConfig.squareCropAlbumArt
         )
 
         exoPlayer.addListener(PlayerListener())
