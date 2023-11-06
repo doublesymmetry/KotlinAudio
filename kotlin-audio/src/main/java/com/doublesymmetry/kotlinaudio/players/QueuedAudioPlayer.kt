@@ -149,10 +149,8 @@ class QueuedAudioPlayer(
      * @param indexes The indexes of the items to remove.
      */
     fun remove(indexes: List<Int>) {
-        val sorted = indexes.toList()
-        // Sort the indexes in descending order so we can safely remove them one by one
-        // without having the next index possibly newly pointing to another item than intended:
-        Collections.sort(sorted, Collections.reverseOrder());
+        val sorted = indexes.toMutableList()
+        sorted.sortDescending()  // Sort the indexes in descending order
         sorted.forEach {
             remove(it)
         }
