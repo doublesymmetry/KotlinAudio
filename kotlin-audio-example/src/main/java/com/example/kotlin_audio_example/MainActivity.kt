@@ -30,13 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
-import com.doublesymmetry.kotlinaudio.models.CapabilitiesConfig
-import com.doublesymmetry.kotlinaudio.models.Capability
 import com.doublesymmetry.kotlinaudio.models.DefaultAudioItem
 import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
 import com.doublesymmetry.kotlinaudio.models.MediaType
-import com.doublesymmetry.kotlinaudio.models.NofiticationActionOptions
-import com.doublesymmetry.kotlinaudio.models.NotificationOptions
+import com.doublesymmetry.kotlinaudio.models.NotificationButton
+import com.doublesymmetry.kotlinaudio.models.NotificationConfig
 import com.doublesymmetry.kotlinaudio.models.RepeatMode
 import com.doublesymmetry.kotlinaudio.models.PlayerConfig
 import com.doublesymmetry.kotlinaudio.players.QueuedAudioPlayer
@@ -44,7 +42,6 @@ import com.example.kotlin_audio_example.ui.component.ActionBottomSheet
 import com.example.kotlin_audio_example.ui.component.PlayerControls
 import com.example.kotlin_audio_example.ui.component.TrackDisplay
 import com.example.kotlin_audio_example.ui.theme.KotlinAudioTheme
-import com.google.android.exoplayer2.ui.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -164,21 +161,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun setupNotification() {
-        val capabilitiesConfig = CapabilitiesConfig(
-            capabilities = listOf(
-                Capability.PlayPause(),
-                Capability.Next(),
-                Capability.Previous(),
-                Capability.Forward(notificationOptions = NofiticationActionOptions(isCompact = false)),
-                Capability.Backward(notificationOptions = NofiticationActionOptions(isCompact = false, icon = R.drawable.exo_icon_circular_play)),
-                Capability.SeekTo
-            ),
-            notificationOptions = NotificationOptions(
-                accentColor = null, smallIcon = null, pendingIntent = null
-            )
+        val notificationConfig = NotificationConfig(
+            listOf(
+                NotificationButton.PLAY_PAUSE(),
+                NotificationButton.NEXT(isCompact = true),
+                NotificationButton.PREVIOUS(isCompact = true),
+                NotificationButton.SEEK_TO
+            ), accentColor = null, smallIcon = null, pendingIntent = null
         )
-
-        player.notificationManager.createNotification(capabilitiesConfig)
+        player.notificationManager.createNotification(notificationConfig)
     }
 
     companion object {

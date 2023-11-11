@@ -63,8 +63,8 @@ class QueuedAudioPlayer(
         get() = items.getOrNull(currentIndex - 1)
 
     override fun load(item: AudioItem, playWhenReady: Boolean) {
-        currentPlayer().playWhenReady = playWhenReady
         load(item)
+        currentPlayer().playWhenReady = playWhenReady
     }
 
     override fun load(item: AudioItem) {
@@ -77,6 +77,7 @@ class QueuedAudioPlayer(
             exoPlayer.removeMediaItem(currentIndex)
             exoPlayer2.addMediaSource(currentIndex + 1, getMediaSourceFromAudioItem(item))
             exoPlayer2.removeMediaItem(currentIndex)
+            currentPlayer().seekTo(currentIndex, C.TIME_UNSET)
             currentPlayer().prepare()
         }
     }
@@ -154,10 +155,10 @@ class QueuedAudioPlayer(
      * @param indexes The indexes of the items to remove.
      */
     fun remove(indexes: List<Int>) {
-        val sorted = indexes.toList()
+        val sorted = indexes.toMutableList()
         // Sort the indexes in descending order so we can safely remove them one by one
         // without having the next index possibly newly pointing to another item than intended:
-        Collections.sort(sorted, Collections.reverseOrder());
+        sorted.sortDescending()
         sorted.forEach {
             remove(it)
         }
