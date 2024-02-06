@@ -128,7 +128,7 @@ jobs:
         with:
           report_paths: "kotlin-audio/build/outputs/androidTest-results/**/TEST-*.xml"
   build-sample:
-    runs-on: macos-latest
+    runs-on: blaze/macos-14
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
