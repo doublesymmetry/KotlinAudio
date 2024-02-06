@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.example.kotlin_audio_example"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.example.kotlin_audio_example"
         minSdk = 21
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 

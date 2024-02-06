@@ -39,6 +39,8 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import jp.wasabeef.transformers.coil.CropSquareTransformation
+import okhttp3.Headers
+import okhttp3.Headers.Companion.toHeaders
 
 class NotificationManager internal constructor(
     private val context: Context,
@@ -76,13 +78,15 @@ class NotificationManager internal constructor(
                 return bitmap
             }
             val artwork = getMediaItemArtworkUrl()
+            val headers = getNetworkHeaders()
             val holder = player.currentMediaItem?.getAudioItemHolder()
             if (artwork != null && holder?.artworkBitmap == null) {
                 var imageRequest = ImageRequest.Builder(context)
                         .data(artwork)
-                        if (squareCropAlbumArt) {
-                            imageRequest = imageRequest.transformations(CropSquareTransformation())
-                        }
+                        .headers(headers)
+                if (squareCropAlbumArt) {
+                    imageRequest = imageRequest.transformations(CropSquareTransformation())
+                }
                 context.imageLoader.enqueue(
                         imageRequest.target { result ->
                             val resultBitmap = (result as BitmapDrawable).bitmap
@@ -115,6 +119,7 @@ class NotificationManager internal constructor(
     internal var overrideAudioItem: AudioItem? = null
         set(value) {
             notificationMetadataBitmap = null
+            val headers = getNetworkHeaders()
 
             if (field != value) {
                 if (value?.artwork != null) {
@@ -122,6 +127,7 @@ class NotificationManager internal constructor(
                     notificationMetadataArtworkDisposable = context.imageLoader.enqueue(
                         ImageRequest.Builder(context)
                             .data(value.artwork)
+                            .headers(headers)
                             .target { result ->
                                 notificationMetadataBitmap = (result as BitmapDrawable).bitmap
                                 invalidate()
@@ -175,6 +181,10 @@ class NotificationManager internal constructor(
         return overrideAudioItem?.artwork
             ?: mediaItem?.mediaMetadata?.artworkUri?.toString()
             ?: mediaItem?.getAudioItemHolder()?.audioItem?.artwork
+    }
+
+    private fun getNetworkHeaders(): Headers {
+        return player.currentMediaItem?.getAudioItemHolder()?.audioItem?.options?.headers?.toHeaders() ?: Headers.Builder().build()
     }
 
     /**
