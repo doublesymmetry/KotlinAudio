@@ -1,16 +1,17 @@
 name: validate
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    types: [opened, synchronize]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   unit-tests:
-    runs-on: macos-latest
-    timeout-minutes: 75
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -30,8 +31,8 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v2
         with:
-          distribution: 'adopt'
-          java-version: '11'
+          distribution: "adopt"
+          java-version: "11"
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
         timeout-minutes: 5
@@ -49,9 +50,14 @@ jobs:
           retry_wait_seconds: 60
           max_attempts: 3
           command: ./gradlew :kotlin-audio:packageDebugAndroidTest --daemon
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       # This appears to be 'Cache Size: ~1230 MB (1290026823 B)' based on watching action logs
-        # Repo limit is 10GB; branch caches are independent; branches may read default branch cache.
-        # We don't want branches to evict main branch snapshot, so save on main, read-only all else
+      # Repo limit is 10GB; branch caches are independent; branches may read default branch cache.
+      # We don't want branches to evict main branch snapshot, so save on main, read-only all else
       - name: AVD cache
         uses: actions/cache@v3
         id: avd-cache
@@ -120,7 +126,7 @@ jobs:
         uses: mikepenz/action-junit-report@v3
         if: always() # always run even if the previous step fails
         with:
-          report_paths: 'kotlin-audio/build/outputs/androidTest-results/**/TEST-*.xml'
+          report_paths: "kotlin-audio/build/outputs/androidTest-results/**/TEST-*.xml"
   build-sample:
     runs-on: macos-latest
     steps:
@@ -129,7 +135,7 @@ jobs:
       - name: Setup Java
         uses: actions/setup-java@v2
         with:
-          distribution: 'adopt'
-          java-version: '11'
+          distribution: "adopt"
+          java-version: "11"
       - name: Build Example App
         run: ./gradlew :kotlin-audio-example:assembleDebug
