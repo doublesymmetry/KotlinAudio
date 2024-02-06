@@ -12,13 +12,13 @@ concurrency:
 env:
   JAVA_VERSION: 17
 jobs:
-  unit-tests:
+  test:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        api-level: [23, 26, 31]
+        api-level: [24, 26, 31]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Run Emulator Tests
+      - name: Run Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
