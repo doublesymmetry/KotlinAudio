@@ -11,6 +11,8 @@ group = 'com.github.doublesymmetry'
 version = versionNumber
 
 android {
+    namespace = "com.doublesymmetry.kotlinaudio"
+
     compileSdk 31
 
     defaultConfig {
