@@ -9,8 +9,6 @@ concurrency:
   # Limit concurrency to 1 for PRs. 'main' concurrency isn't limited.
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
-env:
-  JAVA_VERSION: 17
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api-level: [24, 26, 31]
+        api-level: [26, 31]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
@@ -26,7 +24,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: "adopt"
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: 17
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
         timeout-minutes: 5
@@ -66,7 +64,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: "adopt"
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: 11
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
         timeout-minutes: 5
