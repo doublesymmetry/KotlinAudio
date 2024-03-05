@@ -16,7 +16,7 @@ Inspired by [SwiftAudioEx](https://github.com/doublesymmetry/SwiftAudioEx). Our 
 
 <br style="display: none;"/>
 
-_[Blaze](https://runblaze.dev) sponsors RNTP by providing super fast Apple Silicon based macOS Github Action Runners. Use the discount code `RNTP50` at checkout to get 50% off your first year._
+_[Blaze](https://runblaze.dev) sponsors KotlinAudio by providing super fast Apple Silicon based macOS Github Action Runners. Use the discount code `RNTP50` at checkout to get 50% off your first year._
 
 </div>
 
