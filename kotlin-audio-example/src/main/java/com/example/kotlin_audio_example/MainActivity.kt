@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
 import com.doublesymmetry.kotlinaudio.models.DefaultAudioItem
 import com.doublesymmetry.kotlinaudio.models.MediaSessionCallback
+import com.doublesymmetry.kotlinaudio.models.AAMediaSessionCallBack
 import com.doublesymmetry.kotlinaudio.models.MediaType
 import com.doublesymmetry.kotlinaudio.models.NotificationButton
 import com.doublesymmetry.kotlinaudio.models.NotificationConfig
@@ -56,13 +57,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         Timber.plant(Timber.DebugTree())
         super.onCreate(savedInstanceState)
+        val mAAMediaSessionCallBack = object: AAMediaSessionCallBack {
+            override fun handlePlayFromMediaId(mediaId: String?, extras: Bundle?) {
+                TODO("Not yet implemented")
+            }
 
+            override fun handlePlayFromSearch(query: String?, extras: Bundle?) {
+                TODO("Not yet implemented")
+            }
+
+            override fun handleSkipToQueueItem(id: Long) {
+                TODO("Not yet implemented")
+            }
+        }
         player = QueuedAudioPlayer(
             this, playerConfig = PlayerConfig(
                 interceptPlayerActionsTriggeredExternally = true,
                 handleAudioBecomingNoisy = true,
                 handleAudioFocus = true
-            )
+            ),
+            mediaSessionCallback = mAAMediaSessionCallBack,
         )
         player.add(tracks)
         player.playerOptions.repeatMode = RepeatMode.ALL
