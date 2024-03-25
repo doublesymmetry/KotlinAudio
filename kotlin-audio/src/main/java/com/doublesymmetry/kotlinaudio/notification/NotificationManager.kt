@@ -38,6 +38,7 @@ import com.google.android.exoplayer2.ui.PlayerNotificationManager.CustomActionRe
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import jp.wasabeef.transformers.coil.CropSquareTransformation
 import okhttp3.Headers
 import okhttp3.Headers.Companion.toHeaders
 
@@ -47,7 +48,8 @@ class NotificationManager internal constructor(
     private val mediaSession: MediaSessionCompat,
     private val mediaSessionConnector: MediaSessionConnector,
     val event: NotificationEventHolder,
-    val playerEventHolder: PlayerEventHolder
+    val playerEventHolder: PlayerEventHolder,
+    private val squareCropAlbumArt: Boolean,
 ) : PlayerNotificationManager.NotificationListener {
     private var pendingIntent: PendingIntent? = null
     private val descriptionAdapter = object : PlayerNotificationManager.MediaDescriptionAdapter {
@@ -79,11 +81,14 @@ class NotificationManager internal constructor(
             val headers = getNetworkHeaders()
             val holder = player.currentMediaItem?.getAudioItemHolder()
             if (artwork != null && holder?.artworkBitmap == null) {
-                context.imageLoader.enqueue(
-                    ImageRequest.Builder(context)
+                var imageRequest = ImageRequest.Builder(context)
                         .data(artwork)
                         .headers(headers)
-                        .target { result ->
+                if (squareCropAlbumArt) {
+                    imageRequest = imageRequest.transformations(CropSquareTransformation())
+                }
+                context.imageLoader.enqueue(
+                        imageRequest.target { result ->
                             val resultBitmap = (result as BitmapDrawable).bitmap
                             holder?.artworkBitmap = resultBitmap
                             invalidate()

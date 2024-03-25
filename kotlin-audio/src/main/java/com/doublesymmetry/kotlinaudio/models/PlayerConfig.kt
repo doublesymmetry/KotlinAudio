@@ -28,7 +28,10 @@ data class PlayerConfig(
      * The audio content type.
      */
     val audioContentType: AudioContentType = AudioContentType.MUSIC,
-
+    /**
+     * Whether to crop the album art to a square.
+     */
+    val squareCropAlbumArt: Boolean = false,
     /**
      * The audio usage.
      */
