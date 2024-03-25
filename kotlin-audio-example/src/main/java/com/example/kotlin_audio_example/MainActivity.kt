@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity() {
                             player.play()
                         }
                     },
+                    onSwitchExoPlayer = { player.switchExoplayer() },
                     onSeek = { player.seek(it, TimeUnit.MILLISECONDS) }
                 )
             }
@@ -242,6 +243,7 @@ fun MainScreen(
     onTopBarAction: () -> Unit = {},
     onPlayPause: () -> Unit = {},
     onSeek: (Long) -> Unit = {},
+    onSwitchExoPlayer: () -> Unit = {},
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -282,6 +284,7 @@ fun MainScreen(
                 onNext = onNext,
                 isPaused = isPaused,
                 onPlayPause = onPlayPause,
+                onSwitchExoPlayer = onSwitchExoPlayer,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 60.dp)

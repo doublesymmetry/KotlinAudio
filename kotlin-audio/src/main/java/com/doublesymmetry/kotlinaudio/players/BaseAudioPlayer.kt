@@ -74,6 +74,7 @@ import com.google.android.exoplayer2.upstream.cache.CacheDataSource
 import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Locale
@@ -87,16 +88,31 @@ abstract class BaseAudioPlayer internal constructor(
 ) : AudioManager.OnAudioFocusChangeListener {
     protected val exoPlayer: ExoPlayer
 
+
     private var cache: SimpleCache? = null
     private val scope = MainScope()
     private var playerConfig: PlayerConfig = playerConfig
 
-    val notificationManager: NotificationManager
+    private var currentPlayer = 0
+    protected val exoPlayer2: ExoPlayer
+    val playerListener = PlayerListener()
+
+    fun currentPlayer(): ExoPlayer {
+        return if(currentPlayer == 0) exoPlayer;
+        else exoPlayer2;
+    }
+
+    private fun otherPlayer(): ExoPlayer {
+        return if(currentPlayer == 1) exoPlayer;
+        else exoPlayer2;
+    }
+
+    var notificationManager: NotificationManager
 
     open val playerOptions: PlayerOptions = DefaultPlayerOptions()
 
     open val currentItem: AudioItem?
-        get() = exoPlayer.currentMediaItem?.getAudioItemHolder()?.audioItem
+        get() = currentPlayer().currentMediaItem?.getAudioItemHolder()?.audioItem
 
     var playbackError: PlaybackError? = null
     var playerState: AudioPlayerState = AudioPlayerState.IDLE
@@ -116,44 +132,44 @@ abstract class BaseAudioPlayer internal constructor(
         }
 
     var playWhenReady: Boolean
-        get() = exoPlayer.playWhenReady
+        get() = currentPlayer().playWhenReady
         set(value) {
-            exoPlayer.playWhenReady = value
+            currentPlayer().playWhenReady = value
         }
 
     val duration: Long
         get() {
-            return if (exoPlayer.duration == C.TIME_UNSET) 0
-            else exoPlayer.duration
+            return if (currentPlayer().duration == C.TIME_UNSET) 0
+            else currentPlayer().duration
         }
 
     val isCurrentMediaItemLive: Boolean
-        get() = exoPlayer.isCurrentMediaItemLive
+        get() = currentPlayer().isCurrentMediaItemLive
 
     private var oldPosition = 0L
 
     val position: Long
         get() {
-            return if (exoPlayer.currentPosition == C.POSITION_UNSET.toLong()) 0
-            else exoPlayer.currentPosition
+            return if (currentPlayer().currentPosition == C.POSITION_UNSET.toLong()) 0
+            else currentPlayer().currentPosition
         }
 
     val bufferedPosition: Long
         get() {
-            return if (exoPlayer.bufferedPosition == C.POSITION_UNSET.toLong()) 0
-            else exoPlayer.bufferedPosition
+            return if (currentPlayer().bufferedPosition == C.POSITION_UNSET.toLong()) 0
+            else currentPlayer().bufferedPosition
         }
 
     var volume: Float
-        get() = exoPlayer.volume
+        get() = currentPlayer().volume
         set(value) {
-            exoPlayer.volume = value * volumeMultiplier
+            currentPlayer().volume = value * volumeMultiplier
         }
 
     var playbackSpeed: Float
-        get() = exoPlayer.playbackParameters.speed
+        get() = currentPlayer().playbackParameters.speed
         set(value) {
-            exoPlayer.setPlaybackSpeed(value)
+            currentPlayer().setPlaybackSpeed(value)
         }
 
     var automaticallyUpdateNotificationMetadata: Boolean = true
@@ -165,7 +181,7 @@ abstract class BaseAudioPlayer internal constructor(
         }
 
     val isPlaying
-        get() = exoPlayer.isPlaying
+        get() = currentPlayer().isPlaying
 
     private val notificationEventHolder = NotificationEventHolder()
     private val playerEventHolder = PlayerEventHolder()
@@ -233,10 +249,16 @@ abstract class BaseAudioPlayer internal constructor(
             }
             .build()
 
+        exoPlayer2 = ExoPlayer.Builder(context)
+            .setHandleAudioBecomingNoisy(playerConfig.handleAudioBecomingNoisy)
+            .apply {
+                if (bufferConfig != null) setLoadControl(setupBuffer(bufferConfig))
+            }
+            .build()
         mediaSession.isActive = true
 
         val playerToUse =
-            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else exoPlayer
+            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else currentPlayer()
 
         notificationManager = NotificationManager(
             context,
@@ -247,7 +269,7 @@ abstract class BaseAudioPlayer internal constructor(
             playerEventHolder
         )
 
-        exoPlayer.addListener(PlayerListener())
+        currentPlayer().addListener(playerListener)
 
         scope.launch {
             // Whether ExoPlayer should manage audio focus for us automatically
@@ -264,7 +286,7 @@ abstract class BaseAudioPlayer internal constructor(
                     }
                 )
                 .build();
-            exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
+            currentPlayer().setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
             mediaSessionConnector.setPlayer(playerToUse)
             mediaSessionConnector.setMediaMetadataProvider {
                 notificationManager.getMediaMetadataCompat()
@@ -274,8 +296,96 @@ abstract class BaseAudioPlayer internal constructor(
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
     }
 
+    fun playNext(exoplayer: ExoPlayer) {
+        exoplayer.seekToNextMediaItem()
+    }
+
+    fun playPrevious(exoplayer: ExoPlayer) {
+        exoplayer.seekToPreviousMediaItem()
+    }
+
+    fun playAtIndex(index: Int, exoplayer: ExoPlayer) {
+        exoplayer.seekTo(index, C.TIME_UNSET)
+    }
+
+    fun switchExoplayer(
+        playerOperation: (exoplayer: ExoPlayer) -> Unit = ::playNext,
+        fadeDuration: Long = 1500,
+        fadeInterval: Long = 20,
+        fadeToVolume: Float = 1f
+    ){
+        currentPlayer += 1;
+        if (currentPlayer > 1) {
+            currentPlayer = 0;
+        }
+        scope.launch {
+            val fadeOutPlayer = otherPlayer();
+            fadeOutPlayer.removeListener(playerListener)
+            var fadeOutDuration = fadeDuration
+            val volumeDiff = -fadeOutPlayer.volume * fadeInterval / fadeOutDuration;
+            while (fadeOutDuration > 0) {
+                fadeOutDuration -= fadeInterval
+                fadeOutPlayer.volume += volumeDiff
+                delay(fadeInterval)
+            }
+            fadeOutPlayer.volume = 0f
+            fadeOutPlayer.playWhenReady = false
+            playerOperation(fadeOutPlayer)
+            fadeOutPlayer.pause()
+        }
+        val playerObject = currentPlayer()
+        val playerToUse =
+            if (playerConfig.interceptPlayerActionsTriggeredExternally) createForwardingPlayer() else playerObject
+
+        notificationManager = NotificationManager(
+            context,
+            playerToUse,
+            mediaSession,
+            mediaSessionConnector,
+            notificationEventHolder,
+            playerEventHolder
+        )
+
+        playerObject.addListener(playerListener)
+
+        scope.launch {
+            // Whether ExoPlayer should manage audio focus for us automatically
+            // see https://medium.com/google-exoplayer/easy-audio-focus-with-exoplayer-a2dcbbe4640e
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(
+                    when (playerConfig.audioContentType) {
+                        AudioContentType.MUSIC -> C.AUDIO_CONTENT_TYPE_MUSIC
+                        AudioContentType.SPEECH -> C.AUDIO_CONTENT_TYPE_SPEECH
+                        AudioContentType.SONIFICATION -> C.AUDIO_CONTENT_TYPE_SONIFICATION
+                        AudioContentType.MOVIE -> C.AUDIO_CONTENT_TYPE_MOVIE
+                        AudioContentType.UNKNOWN -> C.AUDIO_CONTENT_TYPE_UNKNOWN
+                    }
+                )
+                .build();
+            playerObject.setAudioAttributes(audioAttributes, false);
+            mediaSessionConnector.setPlayer(playerToUse)
+            mediaSessionConnector.setMediaMetadataProvider {
+                notificationManager.getMediaMetadataCompat()
+            }
+            playerObject.playWhenReady = true
+            playerObject.seekToNextMediaItem()
+            playerObject.prepare()
+            playerObject.volume = 0f
+            var fadeInDuration = fadeDuration
+            val volumeDiff = fadeToVolume * fadeInterval / fadeInDuration;
+            while (fadeInDuration > 0) {
+                fadeInDuration -= fadeInterval
+                playerObject.volume += volumeDiff
+                delay(fadeInterval)
+            }
+        }
+
+        playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
+    }
+
     private fun createForwardingPlayer(): ForwardingPlayer {
-        return object : ForwardingPlayer(exoPlayer) {
+        return object : ForwardingPlayer(currentPlayer()) {
             override fun play() {
                 playerEventHolder.updateOnPlayerActionTriggeredExternally(MediaSessionCallback.PLAY)
             }
@@ -354,7 +464,7 @@ abstract class BaseAudioPlayer internal constructor(
      * @param playWhenReady Whether playback starts automatically.
      */
     open fun load(item: AudioItem, playWhenReady: Boolean = true) {
-        exoPlayer.playWhenReady = playWhenReady
+        currentPlayer().playWhenReady = playWhenReady
         load(item)
     }
 
@@ -364,12 +474,12 @@ abstract class BaseAudioPlayer internal constructor(
      */
     open fun load(item: AudioItem) {
         val mediaSource = getMediaSourceFromAudioItem(item)
-        exoPlayer.addMediaSource(mediaSource)
-        exoPlayer.prepare()
+        currentPlayer().addMediaSource(mediaSource)
+        currentPlayer().prepare()
     }
 
     fun togglePlaying() {
-        if (exoPlayer.isPlaying) {
+        if (currentPlayer().isPlaying) {
             pause()
         } else {
             play()
@@ -377,26 +487,26 @@ abstract class BaseAudioPlayer internal constructor(
     }
 
     var skipSilence: Boolean
-        get() = exoPlayer.skipSilenceEnabled
+        get() = currentPlayer().skipSilenceEnabled
         set(value) {
-            exoPlayer.skipSilenceEnabled = value;
+            currentPlayer().skipSilenceEnabled = value;
         }
 
     fun play() {
-        exoPlayer.play()
+        currentPlayer().play()
         if (currentItem != null) {
-            exoPlayer.prepare()
+            currentPlayer().prepare()
         }
     }
 
     fun prepare() {
         if (currentItem != null) {
-            exoPlayer.prepare()
+            currentPlayer().prepare()
         }
     }
 
     fun pause() {
-        exoPlayer.pause()
+        currentPlayer().pause()
     }
 
     /**
@@ -407,20 +517,21 @@ abstract class BaseAudioPlayer internal constructor(
     @CallSuper
     open fun stop() {
         playerState = AudioPlayerState.STOPPED
-        exoPlayer.playWhenReady = false
-        exoPlayer.stop()
+        currentPlayer().playWhenReady = false
+        currentPlayer().stop()
     }
 
     @CallSuper
     open fun clear() {
         exoPlayer.clearMediaItems()
+        exoPlayer2.clearMediaItems()
     }
 
     /**
      * Pause playback whenever an item plays to its end.
      */
     fun setPauseAtEndOfItem(pause: Boolean) {
-        exoPlayer.pauseAtEndOfMediaItems = pause
+        currentPlayer().pauseAtEndOfMediaItems = pause
     }
 
     /**
@@ -432,6 +543,7 @@ abstract class BaseAudioPlayer internal constructor(
         stop()
         notificationManager.destroy()
         exoPlayer.release()
+        exoPlayer2.release()
         cache?.release()
         cache = null
         mediaSession.isActive = false
@@ -439,12 +551,12 @@ abstract class BaseAudioPlayer internal constructor(
 
     open fun seek(duration: Long, unit: TimeUnit) {
         val positionMs = TimeUnit.MILLISECONDS.convert(duration, unit)
-        exoPlayer.seekTo(positionMs)
+        currentPlayer().seekTo(positionMs)
     }
 
     open fun seekBy(offset: Long, unit: TimeUnit) {
-        val positionMs = exoPlayer.currentPosition + TimeUnit.MILLISECONDS.convert(offset, unit)
-        exoPlayer.seekTo(positionMs)
+        val positionMs = currentPlayer().currentPosition + TimeUnit.MILLISECONDS.convert(offset, unit)
+        currentPlayer().seekTo(positionMs)
     }
 
     protected fun getMediaSourceFromAudioItem(audioItem: AudioItem): MediaSource {
