@@ -73,7 +73,10 @@ import com.google.android.exoplayer2.upstream.RawResourceDataSource
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource
 import com.google.android.exoplayer2.upstream.cache.SimpleCache
 import com.google.android.exoplayer2.util.Util
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.util.Locale
@@ -149,6 +152,34 @@ abstract class BaseAudioPlayer internal constructor(
         set(value) {
             exoPlayer.volume = value * volumeMultiplier
         }
+
+    /**
+     * fade volume of the current exoPlayer by a simple linear function.
+     */
+    fun fadeVolume(volume: Float = 1f, duration: Long = 500, interval: Long = 20L, callback: () -> Unit = { }): Deferred<Unit> {
+        return scope.async {
+            val volumeDiff = (volume - exoPlayer.volume) * interval / duration
+            var fadeInDuration = duration
+            while (fadeInDuration > 0) {
+                fadeInDuration -= interval
+                exoPlayer.volume += volumeDiff
+                delay(interval)
+            }
+            exoPlayer.volume = volume
+            callback()
+            return@async
+        }
+    }
+
+    /**
+     * a simple fade in/out wrapper. for KA-example only, do not use.
+     */
+    fun simpleFadeDemo(callback: () -> Unit = { }) {
+        fadeVolume(0f, callback={
+            callback()
+            fadeVolume()
+        })
+    }
 
     var playbackSpeed: Float
         get() = exoPlayer.playbackParameters.speed

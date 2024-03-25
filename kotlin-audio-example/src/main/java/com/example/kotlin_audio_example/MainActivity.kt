@@ -103,15 +103,16 @@ class MainActivity : ComponentActivity() {
                     position = position,
                     duration = duration,
                     isLive = isLive,
-                    onPrevious = { player.previous() },
-                    onNext = { player.next() },
+                    onPrevious = { player.simpleFadeDemo { player.previous() } },
+                    onNext = { player.simpleFadeDemo { player.next() } },
                     isPaused = state.value != AudioPlayerState.PLAYING,
                     onTopBarAction = { showSheet = true },
                     onPlayPause = {
                         if (player.playerState == AudioPlayerState.PLAYING) {
-                            player.pause()
+                            player.fadeVolume(0f, callback = { player.pause() })
                         } else {
                             player.play()
+                            player.fadeVolume()
                         }
                     },
                     onSeek = { player.seek(it, TimeUnit.MILLISECONDS) }
