@@ -19,11 +19,13 @@ import androidx.media.AudioManagerCompat.AUDIOFOCUS_GAIN
 import com.doublesymmetry.kotlinaudio.event.EventHolder
 import com.doublesymmetry.kotlinaudio.event.NotificationEventHolder
 import com.doublesymmetry.kotlinaudio.event.PlayerEventHolder
+import com.doublesymmetry.kotlinaudio.models.AudioAttributeConfig
 import com.doublesymmetry.kotlinaudio.models.AudioContentType
 import com.doublesymmetry.kotlinaudio.models.AudioItem
 import com.doublesymmetry.kotlinaudio.models.AudioItemHolder
 import com.doublesymmetry.kotlinaudio.models.AudioItemTransitionReason
 import com.doublesymmetry.kotlinaudio.models.AudioPlayerState
+import com.doublesymmetry.kotlinaudio.models.AudioUsageType
 import com.doublesymmetry.kotlinaudio.models.BufferConfig
 import com.doublesymmetry.kotlinaudio.models.CacheConfig
 import com.doublesymmetry.kotlinaudio.models.DefaultPlayerOptions
@@ -250,21 +252,8 @@ abstract class BaseAudioPlayer internal constructor(
         exoPlayer.addListener(PlayerListener())
 
         scope.launch {
-            // Whether ExoPlayer should manage audio focus for us automatically
-            // see https://medium.com/google-exoplayer/easy-audio-focus-with-exoplayer-a2dcbbe4640e
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(
-                    when (playerConfig.audioContentType) {
-                        AudioContentType.MUSIC -> C.AUDIO_CONTENT_TYPE_MUSIC
-                        AudioContentType.SPEECH -> C.AUDIO_CONTENT_TYPE_SPEECH
-                        AudioContentType.SONIFICATION -> C.AUDIO_CONTENT_TYPE_SONIFICATION
-                        AudioContentType.MOVIE -> C.AUDIO_CONTENT_TYPE_MOVIE
-                        AudioContentType.UNKNOWN -> C.AUDIO_CONTENT_TYPE_UNKNOWN
-                    }
-                )
-                .build();
-            exoPlayer.setAudioAttributes(audioAttributes, playerConfig.handleAudioFocus);
+            setAudioAttributes()
+
             mediaSessionConnector.setPlayer(playerToUse)
             mediaSessionConnector.setMediaMetadataProvider {
                 notificationManager.getMediaMetadataCompat()
@@ -272,6 +261,53 @@ abstract class BaseAudioPlayer internal constructor(
         }
 
         playerEventHolder.updateAudioPlayerState(AudioPlayerState.IDLE)
+    }
+
+    fun setAudioAttributes(audioAttributeConfig: AudioAttributeConfig) {
+        scope.launch {
+            playerConfig = PlayerConfig(
+                interceptPlayerActionsTriggeredExternally = playerConfig.interceptPlayerActionsTriggeredExternally,
+                handleAudioBecomingNoisy = playerConfig.handleAudioBecomingNoisy,
+                wakeMode = playerConfig.wakeMode,
+
+                handleAudioFocus = audioAttributeConfig.handleAudioFocus,
+                audioUsageType = audioAttributeConfig.audioUsageType,
+                audioContentType = audioAttributeConfig.audioContentType,
+            )
+
+            setAudioAttributes()
+        }
+    }
+
+    private fun setAudioAttributes() {
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(
+                when (playerConfig.audioUsageType) {
+                    AudioUsageType.MEDIA -> C.USAGE_MEDIA
+                    AudioUsageType.VOICE_COMMUNICATION -> C.USAGE_VOICE_COMMUNICATION
+                }
+            )
+            .setContentType(
+                when (playerConfig.audioContentType) {
+                    AudioContentType.MUSIC -> C.AUDIO_CONTENT_TYPE_MUSIC
+                    AudioContentType.SPEECH -> C.AUDIO_CONTENT_TYPE_SPEECH
+                    AudioContentType.SONIFICATION -> C.AUDIO_CONTENT_TYPE_SONIFICATION
+                    AudioContentType.MOVIE -> C.AUDIO_CONTENT_TYPE_MOVIE
+                    AudioContentType.UNKNOWN -> C.AUDIO_CONTENT_TYPE_UNKNOWN
+                }
+            )
+            .build();
+
+        try {
+            var handleAudioFocus = playerConfig.handleAudioFocus
+            if (audioAttributes.usage != C.USAGE_MEDIA || audioAttributes.usage != C.USAGE_GAME) {
+                handleAudioFocus = false
+            }
+
+            exoPlayer.setAudioAttributes(audioAttributes, handleAudioFocus);
+        } catch (e: Exception) {
+            Timber.e("Error setting audioAttributes: ", e)
+        }
     }
 
     private fun createForwardingPlayer(): ForwardingPlayer {
