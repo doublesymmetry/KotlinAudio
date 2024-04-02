@@ -25,6 +25,10 @@ data class PlayerConfig(
      */
     val handleAudioFocus: Boolean = false,
     /**
+     * The audio usage type.
+     */
+    val audioUsageType: AudioUsageType = AudioUsageType.MEDIA,
+    /**
      * The audio content type.
      */
     val audioContentType: AudioContentType = AudioContentType.MUSIC,
