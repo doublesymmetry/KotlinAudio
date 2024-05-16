@@ -341,6 +341,7 @@ class NotificationManager internal constructor(
                             }
                             artist?.let {
                                 putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
+                                putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, it)
                             }
                         })
                         setIconUri(mediaItem?.mediaMetadata?.artworkUri ?: Uri.parse(audioItemHolder?.audioItem?.artwork
@@ -369,6 +370,7 @@ class NotificationManager internal constructor(
         return MediaMetadataCompat.Builder().apply {
             getArtist()?.let {
                 putString(MediaMetadataCompat.METADATA_KEY_ARTIST, it)
+                putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, it)
             }
             getTitle()?.let {
                 putString(MediaMetadataCompat.METADATA_KEY_TITLE, it)
