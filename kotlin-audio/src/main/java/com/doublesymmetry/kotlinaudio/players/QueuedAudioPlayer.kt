@@ -14,8 +14,9 @@ class QueuedAudioPlayer(
     context: Context,
     playerConfig: PlayerConfig = PlayerConfig(),
     bufferConfig: BufferConfig? = null,
-    cacheConfig: CacheConfig? = null
-) : BaseAudioPlayer(context, playerConfig, bufferConfig, cacheConfig) {
+    cacheConfig: CacheConfig? = null,
+    mediaSessionCallback: AAMediaSessionCallBack
+) : BaseAudioPlayer(context, playerConfig, bufferConfig, cacheConfig, mediaSessionCallback) {
     private val queue = LinkedList<MediaSource>()
     override val playerOptions = DefaultQueuedPlayerOptions(exoPlayer)
 
