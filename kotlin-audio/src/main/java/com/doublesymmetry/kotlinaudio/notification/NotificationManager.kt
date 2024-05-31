@@ -714,17 +714,23 @@ class NotificationManager internal constructor(
                     }
 
                     is NotificationButton.STOP -> {
-                        showStopButton = true
+                        if (!needsCustomActionsToAddMissingButtons) {
+                            showStopButton = true
+                        }
                     }
 
                     is NotificationButton.FORWARD -> {
-                        showForwardButton = true
-                        showForwardButtonCompact = button.isCompact
+                        if (!needsCustomActionsToAddMissingButtons) {
+                            showForwardButton = true
+                            showForwardButtonCompact = button.isCompact
+                        }
                     }
 
                     is NotificationButton.BACKWARD -> {
-                        showRewindButton = true
-                        showRewindButtonCompact = button.isCompact
+                        if (!needsCustomActionsToAddMissingButtons) {
+                            showRewindButton = true
+                            showRewindButtonCompact = button.isCompact
+                        }
                     }
 
                     is NotificationButton.NEXT -> {
